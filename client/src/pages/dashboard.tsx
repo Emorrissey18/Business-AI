@@ -116,7 +116,7 @@ export default function Dashboard() {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          <ChatInterface conversationId={selectedConversation} />
+          <ChatInterface conversationId={selectedConversation || undefined} />
         </div>
       </div>
     </div>

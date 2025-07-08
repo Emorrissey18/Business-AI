@@ -30,7 +30,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="min-h-screen bg-bg-light">
+        <div className="min-h-screen bg-background">
           <Header />
           <Router />
         </div>
