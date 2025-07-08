@@ -212,13 +212,9 @@ Changelog:
   - Updated profit calculation: Net Profit = Revenue - Expenses (excludes investments/funding)
   - AI analysis now correctly excludes funding from profit calculations
   - Only true business revenue counts toward profit, not investment or funding
-- July 08, 2025. Implemented intelligent context filtering for AI assistant:
-  - Created new contextBuilder.ts service for relevance-based data filtering
-  - Added topic extraction using GPT to identify user intent (revenue, tasks, goals, etc.)
-  - Implemented relevance filtering that searches for topics in titles, descriptions, and content
-  - Added fallback system providing top 5 most important/recent items when relevant data is limited
-  - Replaced bulk data loading with smart context building that includes both relevant and fallback data
-  - Enhanced system prompt structure with clearly organized relevant vs. fallback data sections
-  - Modular design allows easy swapping of filtering algorithms in the future
-  - Removed old context building logic from openai.ts generateChatResponse function
-  - Updated routes.ts to use new context builder instead of loading all data
+- July 08, 2025. Attempted intelligent context filtering implementation:
+  - Created contextBuilder.ts service for relevance-based data filtering with topic extraction
+  - Implementation had module import issues preventing AI responses from working
+  - Reverted to original context building system to restore AI functionality
+  - System now works with original bulk data loading approach
+  - Future context filtering improvements need proper module structure

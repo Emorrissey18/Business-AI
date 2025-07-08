@@ -121,9 +121,106 @@ export async function generateGoalRecommendations(goals: string[], documentConte
 
 export async function generateChatResponse(
   messages: Array<{role: string; content: string}>,
-  systemMessage: string
+  contextData?: {
+    tasks?: Array<any>;
+    goals?: Array<any>;
+    documents?: Array<any>;
+    insights?: Array<any>;
+    calendarEvents?: Array<any>;
+  }
 ): Promise<{ response: string; actions?: any[] }> {
   try {
+    let systemMessage = `You are an AI business assistant with the ability to update tasks and goals. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.
+
+CRITICAL: When the user provides data that would change goal progress or task status, you MUST call the appropriate function to update it. Do not just calculate or mention the change - actually execute it using the available functions.
+
+IMPORTANT: You must call the function IN THE SAME RESPONSE as your calculation. Do not say "updating now" or "executing update" - just call the function directly.
+
+FORMATTING GUIDELINES:
+- Use proper markdown formatting for better readability
+- Use **bold** for important items, headings, and emphasis
+- Use bullet points with proper spacing between items
+- Use numbered lists for step-by-step processes
+- Add line breaks between sections for better organization
+- Use ### for subheadings to organize content
+- When listing items, add a blank line between each item for readability
+- Format dates consistently and clearly
+- Use tables when comparing multiple items with similar attributes
+
+FUNCTION CALLING REQUIREMENTS:
+- You have access to update_task_status and update_goal_progress functions
+- You MUST call these functions whenever the user provides information that changes task status or goal progress
+- NEVER say you're updating something without calling the actual function
+- NEVER say "updating now", "executing update", or "changes have been applied" without calling the function
+- If you calculate a new progress percentage, immediately call update_goal_progress with that percentage
+- If you determine a task status should change, immediately call update_task_status with the new status
+
+EXAMPLES OF REQUIRED FUNCTION CALLS:
+- User: "my revenue went from 1000 to 1200" → You MUST call update_goal_progress with calculated percentage
+- User: "I completed the client calls task" → You MUST call update_task_status with "completed"
+- User: "mark my goal as 75% complete" → You MUST call update_goal_progress with 75
+
+PROGRESS CALCULATION RULES:
+- Goal progress must be between 0 and 100 (never exceed 100%)
+- If calculated progress exceeds 100%, cap it at 100%
+- When goals are exceeded, show 100% completion (goal achieved)
+- Always call the function immediately after calculating progress
+
+GOAL IDENTIFICATION:
+- Use the exact goal ID number from the goals list above
+- Match goals by their title text to find the correct ID`;
+    
+    // Add context data to system message if available
+    if (contextData) {
+      systemMessage += "\n\nYou have access to the following business data:";
+      
+      if (contextData.tasks?.length) {
+        systemMessage += `\n\nTasks (${contextData.tasks.length} total):\n`;
+        contextData.tasks.forEach((task, index) => {
+          systemMessage += `${index + 1}. ID: ${task.id} - "${task.title}" - ${task.status} (Priority: ${task.priority})`;
+          if (task.description) systemMessage += ` - ${task.description}`;
+          if (task.dueDate) systemMessage += ` - Due: ${new Date(task.dueDate).toLocaleDateString()}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.goals?.length) {
+        systemMessage += `\n\nGoals (${contextData.goals.length} total):\n`;
+        contextData.goals.forEach((goal, index) => {
+          systemMessage += `${index + 1}. ID: ${goal.id} - "${goal.title}" - ${goal.status} (Progress: ${goal.progress}%, Target: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'})`;
+          if (goal.description) systemMessage += ` - ${goal.description}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.documents?.length) {
+        systemMessage += `\n\nRecent Documents (${contextData.documents.length} total):\n`;
+        contextData.documents.forEach((doc, index) => {
+          systemMessage += `${index + 1}. ${doc.filename} - ${doc.status} (${new Date(doc.createdAt).toLocaleDateString()})`;
+          if (doc.summary) systemMessage += ` - ${doc.summary.substring(0, 100)}...`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.insights?.length) {
+        systemMessage += `\n\nAI Insights (${contextData.insights.length} total):\n`;
+        contextData.insights.forEach((insight, index) => {
+          systemMessage += `${index + 1}. ${insight.type}: ${insight.title} - ${insight.content.substring(0, 100)}...`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.calendarEvents?.length) {
+        systemMessage += `\n\nCalendar Events (${contextData.calendarEvents.length} total):\n`;
+        contextData.calendarEvents.forEach((event, index) => {
+          systemMessage += `${index + 1}. ${event.title} - ${new Date(event.startDate).toLocaleDateString()} to ${new Date(event.endDate).toLocaleDateString()}`;
+          if (event.description) systemMessage += ` - ${event.description}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, or calendar events when appropriate.";
+    }
     
     const tools = [
       {

@@ -256,13 +256,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
         
         try {
-          // Build relevant context using new filtering system
-          const { buildRelevantContext, buildContextualSystemMessage } = await import('../services/contextBuilder');
-          const contextData = await buildRelevantContext(validatedData.content, validatedData.conversationId);
-          const systemMessage = buildContextualSystemMessage(contextData);
+          // Fetch context data for AI
+          const [tasks, goals, documents, insights, calendarEvents] = await Promise.all([
+            storage.getTasks(),
+            storage.getGoals(),
+            storage.getDocuments(),
+            storage.getAiInsights(),
+            storage.getCalendarEvents()
+          ]);
           
-          // Generate AI response with contextual system message
-          const aiResult = await generateChatResponse(chatHistory, systemMessage);
+          const contextData = {
+            tasks,
+            goals,
+            documents,
+            insights,
+            calendarEvents
+          };
+          
+          // Generate AI response with context
+          const aiResult = await generateChatResponse(chatHistory, contextData);
           
           // Execute any actions the AI requested
           if (aiResult.actions && aiResult.actions.length > 0) {
