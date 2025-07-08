@@ -6,6 +6,7 @@ import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcess
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { analyzeDataCorrelations, executeCorrelationActions, generateBusinessInsights } from "./services/correlationEngine";
 import { updateRevenueBasedGoals } from "./services/revenueCalculator";
+import { analyzeFinancialRecords } from "./services/financialAnalyzer";
 import { z } from "zod";
 import path from "path";
 
@@ -521,6 +522,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting financial record:', error);
       res.status(500).json({ message: 'Failed to delete financial record' });
+    }
+  });
+
+  // AI Financial Analysis endpoint
+  app.get('/api/ai/financial-analysis', async (req: Request, res: Response) => {
+    try {
+      const records = await storage.getFinancialRecords();
+      const analysis = await analyzeFinancialRecords(records);
+      res.json(analysis);
+    } catch (error) {
+      console.error('Error analyzing financial records:', error);
+      res.status(500).json({ message: 'Failed to analyze financial records' });
     }
   });
 

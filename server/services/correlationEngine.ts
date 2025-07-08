@@ -141,8 +141,8 @@ export async function executeCorrelationActions(analysis: CorrelationAnalysis): 
   try {
     // Execute goal progress updates
     for (const update of analysis.progressUpdates) {
-      // Cap progress at 100% and ensure it's a valid number
-      const cappedProgress = Math.min(100, Math.max(0, update.newProgress));
+      // Cap progress at 100% and ensure it's a valid integer
+      const cappedProgress = Math.floor(Math.min(100, Math.max(0, update.newProgress)));
       await storage.updateGoal(update.goalId, { progress: cappedProgress });
       console.log(`Updated goal ${update.goalId} progress to ${cappedProgress}%: ${update.reason}`);
     }

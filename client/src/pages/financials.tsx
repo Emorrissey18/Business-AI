@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, TrendingUp, TrendingDown, Edit, Trash2, Search, Filter } from "lucide-react";
+import { Plus, DollarSign, TrendingUp, TrendingDown, Edit, Trash2, Search, Filter, Brain } from "lucide-react";
 import { FinancialRecord } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -62,7 +62,7 @@ export default function Financials() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'income':
+      case 'revenue':
         return <TrendingUp className="h-4 w-4 text-green-600" />;
       case 'expense':
         return <TrendingDown className="h-4 w-4 text-red-600" />;
@@ -75,8 +75,8 @@ export default function Financials() {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case 'income':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Income</Badge>;
+      case 'revenue':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Revenue</Badge>;
       case 'expense':
         return <Badge variant="secondary" className="bg-red-100 text-red-800">Expense</Badge>;
       case 'investment':
@@ -96,15 +96,31 @@ export default function Financials() {
     return matchesType && matchesCategory && matchesSearch;
   });
 
+  // AI Financial Analysis
+  const { data: aiAnalysis, isLoading: aiLoading } = useQuery({
+    queryKey: ['/api/ai/financial-analysis'],
+    enabled: !!records && records.length > 0,
+  });
+
   const calculateTotals = () => {
-    if (!filteredRecords) return { income: 0, expenses: 0, investments: 0, net: 0 };
+    if (!filteredRecords) return { revenue: 0, expenses: 0, investments: 0, net: 0 };
     
-    const income = filteredRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+    // Use AI analysis if available, otherwise calculate normally
+    if (aiAnalysis) {
+      return {
+        revenue: aiAnalysis.adjustedRevenue,
+        expenses: aiAnalysis.adjustedExpenses,
+        investments: aiAnalysis.adjustedInvestments,
+        net: aiAnalysis.adjustedNet
+      };
+    }
+    
+    const revenue = filteredRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0);
     const expenses = filteredRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
-    const investments = filteredRecords.filter(r => r.type === 'investment').reduce((sum, r) => sum + r.amount, 0);
-    const net = income - expenses - investments;
+    const investments = filteredRecords.filter(r => r.type === 'other').reduce((sum, r) => sum + r.amount, 0);
+    const net = revenue - expenses - investments;
     
-    return { income, expenses, investments, net };
+    return { revenue, expenses, investments, net };
   };
 
   const totals = calculateTotals();
@@ -151,14 +167,56 @@ export default function Financials() {
         </Button>
       </div>
 
+      {/* AI Insights */}
+      {aiAnalysis && aiAnalysis.insights && aiAnalysis.insights.length > 0 && (
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <h3 className="text-lg font-semibold mb-3 flex items-center">
+              <Brain className="h-5 w-5 mr-2 text-blue-600" />
+              AI Financial Analysis
+            </h3>
+            <div className="space-y-2">
+              {aiAnalysis.insights.map((insight, index) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-sm text-gray-700">{insight}</p>
+                </div>
+              ))}
+            </div>
+            {aiAnalysis.performanceMetrics && (
+              <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Revenue Growth</p>
+                  <p className="text-lg font-semibold text-green-600">
+                    {aiAnalysis.performanceMetrics.revenueGrowth.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Expense Efficiency</p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    {aiAnalysis.performanceMetrics.expenseEfficiency.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Profit Margin</p>
+                  <p className="text-lg font-semibold text-purple-600">
+                    {aiAnalysis.performanceMetrics.profitMargin.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Income</p>
-                <p className="text-2xl font-bold text-green-600">{formatAmount(totals.income)}</p>
+                <p className="text-sm text-gray-600">Total Revenue {aiAnalysis ? '(AI Adjusted)' : ''}</p>
+                <p className="text-2xl font-bold text-green-600">{formatAmount(totals.revenue)}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -168,7 +226,7 @@ export default function Financials() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Expenses</p>
+                <p className="text-sm text-gray-600">Total Expenses {aiAnalysis ? '(AI Adjusted)' : ''}</p>
                 <p className="text-2xl font-bold text-red-600">{formatAmount(totals.expenses)}</p>
               </div>
               <TrendingDown className="h-8 w-8 text-red-600" />
@@ -179,7 +237,7 @@ export default function Financials() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Investments</p>
+                <p className="text-sm text-gray-600">Other {aiAnalysis ? '(AI Adjusted)' : ''}</p>
                 <p className="text-2xl font-bold text-blue-600">{formatAmount(totals.investments)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-blue-600" />
@@ -190,7 +248,7 @@ export default function Financials() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Net Cash Flow</p>
+                <p className="text-sm text-gray-600">Net Cash Flow {aiAnalysis ? '(AI Adjusted)' : ''}</p>
                 <p className={cn("text-2xl font-bold", totals.net >= 0 ? "text-green-600" : "text-red-600")}>
                   {formatAmount(totals.net)}
                 </p>
