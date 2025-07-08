@@ -27,7 +27,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const queryClient = useQueryClient();
 
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
-    queryKey: ['/api/messages', currentConversationId],
+    queryKey: [`/api/messages/${currentConversationId}`, currentConversationId],
     enabled: !!currentConversationId,
   });
 
@@ -57,7 +57,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     },
     onSuccess: () => {
       setMessage("");
-      queryClient.invalidateQueries({ queryKey: ['/api/messages', currentConversationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${currentConversationId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
     },
     onError: (error) => {
@@ -76,8 +76,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     if (!message.trim()) return;
 
     if (!currentConversationId) {
-      // Create new conversation
-      await createConversationMutation.mutateAsync(message.slice(0, 50) + "...");
+      // Create new conversation and then send the message
+      try {
+        const conversation = await createConversationMutation.mutateAsync(message.slice(0, 50) + "...");
+        // Send the message after conversation is created
+        sendMessageMutation.mutate({ content: message, conversationId: conversation.id });
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+      }
       return;
     }
 
