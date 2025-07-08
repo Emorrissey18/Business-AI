@@ -218,9 +218,13 @@ Changelog:
   - Reverted to original context building system to restore AI functionality
   - System now works with original bulk data loading approach
   - Future context filtering improvements need proper module structure
-- July 08, 2025. Fixed AI financial data access:
+- July 08, 2025. Fixed AI financial data access and formatting:
   - Added financial records to AI context data in routes.ts
   - Enhanced AI system message with financial summary calculations
   - AI now has access to total revenue, expenses, net profit, and recent financial records
   - Financial data is automatically calculated and included in every AI response context
   - AI can now answer revenue growth questions using actual financial data
+  - Fixed currency calculation bug (AI was showing $70,000 instead of $700)
+  - Corrected database amounts conversion from cents to dollars (amount / 100)
+  - Eliminated LaTeX formatting in AI responses for cleaner, readable math
+  - AI now shows calculations like "Required Growth = $400,000 - $700 = $399,300" instead of complex LaTeX notation

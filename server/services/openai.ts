@@ -277,6 +277,10 @@ GOAL IDENTIFICATION:
       systemMessage += "3. Calculate growth rates using both current financial data and goal targets\n";
       systemMessage += "4. For monthly growth calculations, break down quarterly goals into monthly targets\n";
       systemMessage += "5. Never ask for information that is already available in the context data\n";
+      systemMessage += "6. ABSOLUTELY NO LaTeX or mathematical markup (no \\[, \\], \\(, \\), \\text{}, \\left, \\right, \\frac, etc.)\n";
+      systemMessage += "7. Use ONLY plain text for calculations - Example: 'Required Growth = $400,000 - $700 = $399,300'\n";
+      systemMessage += "8. For percentages use: 'Growth Rate = (399,300 ÷ 700) × 100 = 57,043%'\n";
+      systemMessage += "9. Use bullet points, simple formatting, and readable math expressions\n";
       systemMessage += "Always cross-reference goals with financial data to provide complete answers.";
     }
     
