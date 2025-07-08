@@ -13,6 +13,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { Message, Conversation, Document, AiInsight } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import FileUpload from "./file-upload";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatInterfaceProps {
   conversationId?: number;
@@ -155,8 +157,30 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                         ? 'bg-primary text-white' 
                         : 'bg-gray-100 text-gray-900'
                     }`}>
-                      <p className="text-sm">{msg.content}</p>
-                      <p className="text-xs opacity-70 mt-1">
+                      {msg.role === 'user' ? (
+                        <p className="text-sm">{msg.content}</p>
+                      ) : (
+                        <div className="text-sm prose prose-sm max-w-none">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h3: ({ children }) => <h3 className="text-base font-semibold mt-4 mb-2 first:mt-0">{children}</h3>,
+                              h4: ({ children }) => <h4 className="text-sm font-semibold mt-3 mb-2 first:mt-0">{children}</h4>,
+                              p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                              ul: ({ children }) => <ul className="mb-3 space-y-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="mb-3 space-y-1">{children}</ol>,
+                              li: ({ children }) => <li className="ml-4">{children}</li>,
+                              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                              em: ({ children }) => <em className="italic">{children}</em>,
+                              code: ({ children }) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs">{children}</code>,
+                              pre: ({ children }) => <pre className="bg-gray-200 p-2 rounded mt-2 mb-2 text-xs overflow-x-auto">{children}</pre>,
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                      <p className="text-xs opacity-70 mt-2">
                         {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                       </p>
                     </div>

@@ -130,7 +130,18 @@ export async function generateChatResponse(
   }
 ): Promise<string> {
   try {
-    let systemMessage = "You are an AI business assistant. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.";
+    let systemMessage = `You are an AI business assistant. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.
+
+FORMATTING GUIDELINES:
+- Use proper markdown formatting for better readability
+- Use **bold** for important items, headings, and emphasis
+- Use bullet points with proper spacing between items
+- Use numbered lists for step-by-step processes
+- Add line breaks between sections for better organization
+- Use ### for subheadings to organize content
+- When listing items, add a blank line between each item for readability
+- Format dates consistently and clearly
+- Use tables when comparing multiple items with similar attributes`;
     
     // Add context data to system message if available
     if (contextData) {
