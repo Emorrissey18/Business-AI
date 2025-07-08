@@ -44,10 +44,7 @@ export default function NewEventModal({ trigger }: NewEventModalProps) {
 
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
-      return apiRequest("/api/calendar-events", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/calendar-events", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/calendar-events'] });
