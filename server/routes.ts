@@ -271,13 +271,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           
           // Generate AI response with context
-          const aiResponse = await generateChatResponse(chatHistory, contextData);
+          const aiResult = await generateChatResponse(chatHistory, contextData);
+          
+          // Execute any actions the AI requested
+          if (aiResult.actions && aiResult.actions.length > 0) {
+            for (const action of aiResult.actions) {
+              try {
+                if (action.type === 'update_task_status') {
+                  await storage.updateTask(action.parameters.taskId, { status: action.parameters.status });
+                } else if (action.type === 'update_goal_progress') {
+                  await storage.updateGoal(action.parameters.goalId, { progress: action.parameters.progress });
+                }
+              } catch (actionError) {
+                console.error('Error executing AI action:', actionError);
+              }
+            }
+          }
           
           // Save AI response
           const aiMessage = await storage.createMessage({
             conversationId: validatedData.conversationId,
             role: 'assistant',
-            content: aiResponse
+            content: aiResult.response
           });
           
           // Update conversation title if this is the first message
@@ -425,6 +440,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting calendar event:', error);
       res.status(500).json({ message: 'Failed to delete calendar event' });
+    }
+  });
+
+  // AI Action endpoints for task and goal management
+  app.post('/api/ai/update-task-status', async (req: Request, res: Response) => {
+    try {
+      const { taskId, status } = req.body;
+      
+      if (!taskId || !status) {
+        return res.status(400).json({ message: 'Task ID and status are required' });
+      }
+      
+      const validStatuses = ['pending', 'in_progress', 'completed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Invalid status. Must be: pending, in_progress, or completed' });
+      }
+      
+      const task = await storage.updateTask(taskId, { status });
+      if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
+      }
+      
+      res.json({ message: 'Task status updated successfully', task });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      res.status(500).json({ message: 'Failed to update task status' });
+    }
+  });
+
+  app.post('/api/ai/update-goal-progress', async (req: Request, res: Response) => {
+    try {
+      const { goalId, progress } = req.body;
+      
+      if (!goalId || progress === undefined) {
+        return res.status(400).json({ message: 'Goal ID and progress are required' });
+      }
+      
+      if (progress < 0 || progress > 100) {
+        return res.status(400).json({ message: 'Progress must be between 0 and 100' });
+      }
+      
+      const goal = await storage.updateGoal(goalId, { progress });
+      if (!goal) {
+        return res.status(404).json({ message: 'Goal not found' });
+      }
+      
+      res.json({ message: 'Goal progress updated successfully', goal });
+    } catch (error) {
+      console.error('Error updating goal progress:', error);
+      res.status(500).json({ message: 'Failed to update goal progress' });
     }
   });
 

@@ -132,3 +132,10 @@ Changelog:
   - Calendar events integrated into AI assistant context
   - Weekly navigation with Today button
   - Upcoming events sidebar with event details
+- July 08, 2025. AI assistant task and goal modification capabilities:
+  - AI can now update task statuses (pending, in_progress, completed)
+  - AI can update goal progress percentages (0-100)
+  - Function calling integration with OpenAI API
+  - New API endpoints: /api/ai/update-task-status and /api/ai/update-goal-progress
+  - AI actions executed automatically when requested by user or deemed helpful
+  - Enhanced AI system message to explain available actions

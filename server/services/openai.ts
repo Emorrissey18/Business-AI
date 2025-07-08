@@ -128,9 +128,9 @@ export async function generateChatResponse(
     insights?: Array<any>;
     calendarEvents?: Array<any>;
   }
-): Promise<string> {
+): Promise<{ response: string; actions?: any[] }> {
   try {
-    let systemMessage = `You are an AI business assistant. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.
+    let systemMessage = `You are an AI business assistant with the ability to update tasks and goals. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.
 
 FORMATTING GUIDELINES:
 - Use proper markdown formatting for better readability
@@ -141,7 +141,13 @@ FORMATTING GUIDELINES:
 - Use ### for subheadings to organize content
 - When listing items, add a blank line between each item for readability
 - Format dates consistently and clearly
-- Use tables when comparing multiple items with similar attributes`;
+- Use tables when comparing multiple items with similar attributes
+
+AVAILABLE ACTIONS:
+- You can update task statuses (pending, in_progress, completed) using the update_task_status function
+- You can update goal progress percentages (0-100) using the update_goal_progress function
+- Use these actions when the user asks you to make changes or when it would be helpful to do so
+- Always inform the user when you've made changes to their data`;
     
     // Add context data to system message if available
     if (contextData) {
@@ -195,6 +201,48 @@ FORMATTING GUIDELINES:
       systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, or calendar events when appropriate.";
     }
     
+    const functions = [
+      {
+        name: "update_task_status",
+        description: "Update the status of a specific task",
+        parameters: {
+          type: "object",
+          properties: {
+            taskId: {
+              type: "number",
+              description: "The ID of the task to update"
+            },
+            status: {
+              type: "string",
+              enum: ["pending", "in_progress", "completed"],
+              description: "The new status for the task"
+            }
+          },
+          required: ["taskId", "status"]
+        }
+      },
+      {
+        name: "update_goal_progress",
+        description: "Update the progress percentage of a specific goal",
+        parameters: {
+          type: "object",
+          properties: {
+            goalId: {
+              type: "number",
+              description: "The ID of the goal to update"
+            },
+            progress: {
+              type: "number",
+              minimum: 0,
+              maximum: 100,
+              description: "The new progress percentage (0-100)"
+            }
+          },
+          required: ["goalId", "progress"]
+        }
+      }
+    ];
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -207,10 +255,28 @@ FORMATTING GUIDELINES:
           content: msg.content
         }))
       ],
+      functions,
+      function_call: "auto",
       max_tokens: 1000,
     });
 
-    return response.choices[0].message.content || "I apologize, but I couldn't generate a response. Please try again.";
+    const choice = response.choices[0];
+    const actions: any[] = [];
+    
+    if (choice.message.function_call) {
+      const functionCall = choice.message.function_call;
+      const functionArgs = JSON.parse(functionCall.arguments || '{}');
+      
+      actions.push({
+        type: functionCall.name,
+        parameters: functionArgs
+      });
+    }
+
+    return {
+      response: choice.message.content || "I apologize, but I couldn't generate a response. Please try again.",
+      actions
+    };
   } catch (error) {
     console.error('OpenAI API error:', error);
     throw new Error(`Failed to generate chat response: ${error instanceof Error ? error.message : 'Unknown error'}`);
