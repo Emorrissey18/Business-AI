@@ -54,7 +54,7 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
       const payload = {
         ...data,
         amount: Math.round(data.amount * 100), // Convert to cents
-        date: new Date(data.date).toISOString(),
+        date: data.date, // Keep as string for backend to transform
       };
       await apiRequest('PATCH', `/api/financial-records/${record.id}`, payload);
     },

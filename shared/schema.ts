@@ -145,12 +145,12 @@ export const insertCalendarEventSchema = z.object({
   allDay: z.boolean().default(false),
 });
 
-export const insertFinancialRecordSchema = createInsertSchema(financialRecords).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  date: z.string().transform((val) => new Date(val)),
+export const insertFinancialRecordSchema = z.object({
+  type: z.enum(['income', 'expense', 'investment']),
+  category: z.string().min(1),
+  amount: z.number().int(),
+  description: z.string().optional(),
+  date: z.union([z.string(), z.date()]).transform((val) => typeof val === 'string' ? new Date(val) : val),
 });
 
 // Types
