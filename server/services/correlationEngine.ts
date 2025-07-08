@@ -49,7 +49,12 @@ FINANCIAL RECORD TO ANALYZE:
 - Date: ${financialRecord.date}
 
 EXISTING GOALS:
-${allGoals.map(g => `- ID: ${g.id}, Title: "${g.title}", Progress: ${g.progress}%, Target: ${g.targetDate}, Status: ${g.status}`).join('\n')}
+${allGoals.map(g => `- ID: ${g.id}, Title: "${g.title}", Progress: ${g.progress}%, Target: ${g.targetDate}, Status: ${g.status}, Description: ${g.description || 'No description'}`).join('\n')}
+
+TOTAL REVENUE ANALYSIS:
+- Total Income: $${(existingFinancialRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
+- Total Expenses: $${(existingFinancialRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
+- Net Revenue: $${((existingFinancialRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0) - existingFinancialRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)) / 100).toFixed(2)}
 
 EXISTING TASKS:
 ${allTasks.map(t => `- ID: ${t.id}, Title: "${t.title}", Status: ${t.status}, Priority: ${t.priority}, Due: ${t.dueDate || 'No due date'}`).join('\n')}
@@ -59,10 +64,17 @@ ${existingFinancialRecords.slice(-5).map(r => `- ${r.type}: ${r.category} $${(r.
 
 ANALYSIS REQUIREMENTS:
 1. Identify which goals and tasks are directly related to this financial record
-2. Determine if this financial record should trigger goal progress updates
-3. Suggest task status changes based on financial evidence
-4. Provide business insights about spending patterns and goal alignment
-5. Recommend specific actions based on the correlation analysis
+2. For revenue-related goals, calculate accurate progress based on actual revenue targets:
+   - "Increase Q1 Revenue by 25%" with target $100,000 means progress = (total_income / 100000) * 100
+   - "Increase Monthly Revenue" with 20% increase means calculate based on monthly revenue patterns
+3. Only suggest progress updates that are mathematically accurate based on financial data
+4. Suggest task status changes based on financial evidence
+5. Provide business insights about spending patterns and goal alignment
+6. Be conservative with progress updates - only update if there's clear evidence
+
+IMPORTANT: When updating goal progress, calculate it based on actual revenue targets, not arbitrary percentages. For example:
+- If goal is "Target $100,000 in Q1 revenue" and current total income is $27,000, progress should be 27%
+- If goal is "Increase Monthly Revenue by 20%" analyze monthly revenue patterns to calculate accurate progress
 
 Respond with a JSON object in this exact format:
 {
@@ -129,8 +141,10 @@ export async function executeCorrelationActions(analysis: CorrelationAnalysis): 
   try {
     // Execute goal progress updates
     for (const update of analysis.progressUpdates) {
-      await storage.updateGoal(update.goalId, { progress: update.newProgress });
-      console.log(`Updated goal ${update.goalId} progress to ${update.newProgress}%: ${update.reason}`);
+      // Cap progress at 100% and ensure it's a valid number
+      const cappedProgress = Math.min(100, Math.max(0, update.newProgress));
+      await storage.updateGoal(update.goalId, { progress: cappedProgress });
+      console.log(`Updated goal ${update.goalId} progress to ${cappedProgress}%: ${update.reason}`);
     }
 
     // Execute task status updates

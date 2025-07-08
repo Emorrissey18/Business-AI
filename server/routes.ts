@@ -5,6 +5,7 @@ import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertCo
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { analyzeDataCorrelations, executeCorrelationActions, generateBusinessInsights } from "./services/correlationEngine";
+import { updateRevenueBasedGoals } from "./services/revenueCalculator";
 import { z } from "zod";
 import path from "path";
 
@@ -629,6 +630,9 @@ async function processFinancialCorrelation(financialRecordId: number) {
     
     // Execute correlation actions (goal progress updates, task status changes)
     await executeCorrelationActions(analysis);
+    
+    // Update revenue-based goals with accurate calculations
+    await updateRevenueBasedGoals();
     
     console.log(`Processed correlations for financial record ${financialRecordId}:`, {
       correlations: analysis.correlations.length,
