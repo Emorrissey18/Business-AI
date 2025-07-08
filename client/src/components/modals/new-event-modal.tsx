@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,7 +44,8 @@ export default function NewEventModal({ trigger }: NewEventModalProps) {
 
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
-      return apiRequest("POST", "/api/calendar-events", data);
+      const response = await apiRequest("POST", "/api/calendar-events", data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/calendar-events'] });
@@ -87,6 +88,9 @@ export default function NewEventModal({ trigger }: NewEventModalProps) {
             <Calendar className="h-5 w-5" />
             Create New Event
           </DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new calendar event.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">

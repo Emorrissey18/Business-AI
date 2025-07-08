@@ -58,13 +58,13 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-2">
                 {conversations.map((conversation) => (
-                  <button
+                  <div
                     key={conversation.id}
-                    onClick={() => setSelectedConversation(conversation.id)}
                     className={cn(
-                      "w-full p-3 text-left rounded-lg hover:bg-gray-50 transition-colors",
+                      "w-full p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer",
                       selectedConversation === conversation.id ? "bg-blue-50 border border-blue-200" : "border border-transparent"
                     )}
+                    onClick={() => setSelectedConversation(conversation.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
@@ -76,15 +76,31 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Add edit functionality here
+                          }}
+                        >
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Add delete functionality here
+                          }}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
