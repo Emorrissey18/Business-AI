@@ -137,10 +137,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.union([z.string(), z.null()]).optional(),
 });
 
-export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertCalendarEventSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
+  allDay: z.boolean().default(false),
 });
 
 export const insertFinancialRecordSchema = createInsertSchema(financialRecords).omit({
