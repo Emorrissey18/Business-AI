@@ -16,7 +16,7 @@ export const documents = pgTable("documents", {
   size: integer("size").notNull(),
   content: text("content"),
   summary: text("summary"),
-  insights: json("insights").$type<string[]>(),
+  insights: json("insights").$type<string[]>().default([]),
   status: text("status").notNull().default("pending"), // pending, processing, completed, error
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   processedAt: timestamp("processed_at"),
@@ -97,6 +97,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
   uploadedAt: true,
   processedAt: true,
+  insights: true,
 });
 
 export const insertGoalSchema = createInsertSchema(goals).omit({

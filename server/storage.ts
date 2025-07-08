@@ -117,7 +117,7 @@ export class MemStorage implements IStorage {
       processedAt: null,
       content: insertDocument.content || null,
       summary: insertDocument.summary || null,
-      insights: (insertDocument.insights as string[]) || null,
+      insights: [],
       status: insertDocument.status || 'pending',
     };
     this.documents.set(id, document);
