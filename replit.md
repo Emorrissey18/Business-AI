@@ -196,3 +196,11 @@ Changelog:
   - Applied fixes to both financial records and goals modals
   - Users can now successfully create custom categories like "R&D", "Consulting", etc.
   - Custom categories work seamlessly with AI correlation system
+- July 08, 2025. Updated edit modals with new revenue/expense/other system:
+  - Replaced "Total Income" with "Total Revenue" throughout application
+  - Updated edit financial record modal to use revenue/expense/other instead of income/investment
+  - Added custom category support to edit financial record modal
+  - Enhanced edit goal modal with type and category fields matching financial records
+  - Both edit modals now support custom categories with "Other" option
+  - AI financial analysis system analyzes performance indicators and adjusts totals automatically
+  - Added AI insights panel showing revenue growth, expense efficiency, and profit margins

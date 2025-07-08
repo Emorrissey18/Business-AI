@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Goal } from "@shared/schema";
 import { z } from "zod";
+import { FINANCIAL_CATEGORIES, FINANCIAL_TYPES } from "@shared/constants";
 
 const editGoalSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -20,6 +21,8 @@ const editGoalSchema = z.object({
   targetDate: z.string().optional(),
   progress: z.number().min(0).max(100),
   status: z.enum(['active', 'completed', 'paused']),
+  type: z.enum(["revenue", "expense", "other"]).optional(),
+  category: z.string().optional(),
 });
 
 type EditGoalForm = z.infer<typeof editGoalSchema>;
@@ -34,6 +37,8 @@ export default function EditGoalModal({ goal, isOpen, onClose }: EditGoalModalPr
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState(goal.progress);
+  const [customCategory, setCustomCategory] = useState("");
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const form = useForm<EditGoalForm>({
     resolver: zodResolver(editGoalSchema),
@@ -43,12 +48,20 @@ export default function EditGoalModal({ goal, isOpen, onClose }: EditGoalModalPr
       targetDate: goal.targetDate ? new Date(goal.targetDate).toISOString().split('T')[0] : "",
       progress: goal.progress,
       status: goal.status,
+      type: goal.type || "revenue",
+      category: goal.category || "",
     },
   });
 
   const editGoalMutation = useMutation({
     mutationFn: async (data: EditGoalForm) => {
-      await apiRequest('PATCH', `/api/goals/${goal.id}`, data);
+      const finalCategory = showCustomCategory ? customCategory : data.category;
+      const payload = {
+        ...data,
+        category: finalCategory,
+        progress: progress, // Use slider value
+      };
+      await apiRequest('PATCH', `/api/goals/${goal.id}`, payload);
     },
     onSuccess: () => {
       toast({
@@ -57,6 +70,7 @@ export default function EditGoalModal({ goal, isOpen, onClose }: EditGoalModalPr
       });
       queryClient.invalidateQueries({ queryKey: ['/api/goals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/financial-analysis'] });
       onClose();
       form.reset();
     },
@@ -105,6 +119,77 @@ export default function EditGoalModal({ goal, isOpen, onClose }: EditGoalModalPr
               placeholder="Enter goal description"
               rows={3}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="type">Type</Label>
+            <Select 
+              value={form.watch("type")} 
+              onValueChange={(value) => {
+                form.setValue("type", value as "revenue" | "expense" | "other");
+                form.setValue("category", "");
+                setShowCustomCategory(false);
+                setCustomCategory("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                {FINANCIAL_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="category">Category</Label>
+            {!showCustomCategory ? (
+              <Select 
+                value={form.watch("category")} 
+                onValueChange={(value) => {
+                  if (value === "Other") {
+                    setShowCustomCategory(true);
+                    form.setValue("category", "");
+                  } else {
+                    form.setValue("category", value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FINANCIAL_CATEGORIES[form.watch("type") || "revenue"]?.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter custom category"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setCustomCategory("");
+                  }}
+                >
+                  Choose from list
+                </Button>
+              </div>
+            )}
           </div>
 
           <div>

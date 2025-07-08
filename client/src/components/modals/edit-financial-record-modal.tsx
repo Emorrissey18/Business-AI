@@ -11,10 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { FinancialRecord } from "@shared/schema";
 import { z } from "zod";
+import { FINANCIAL_CATEGORIES, FINANCIAL_TYPES } from "@shared/constants";
+import { useState } from "react";
 
 const editFinancialRecordSchema = z.object({
-  type: z.enum(['income', 'expense', 'investment']),
-  category: z.string().min(1, "Category is required"),
+  type: z.enum(["revenue", "expense", "other"]),
+  category: z.string().optional(), // Make optional to handle custom categories
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   description: z.string().optional(),
   date: z.string().min(1, "Date is required"),
@@ -28,20 +30,16 @@ interface EditFinancialRecordModalProps {
   onClose: () => void;
 }
 
-const FINANCIAL_CATEGORIES = {
-  income: ["Sales", "Services", "Consulting", "Investments", "Other Income"],
-  expense: ["Office Supplies", "Marketing", "Travel", "Software & Tools", "Utilities", "Rent", "Salaries", "Other Expenses"],
-  investment: ["Equipment", "Software", "Real Estate", "Stocks", "Other Investments"]
-};
-
 export default function EditFinancialRecordModal({ record, isOpen, onClose }: EditFinancialRecordModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [customCategory, setCustomCategory] = useState("");
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const form = useForm<EditFinancialRecordForm>({
     resolver: zodResolver(editFinancialRecordSchema),
     defaultValues: {
-      type: record.type as "income" | "expense" | "investment",
+      type: record.type as "revenue" | "expense" | "other",
       category: record.category,
       amount: record.amount / 100, // Convert from cents
       description: record.description || "",
@@ -51,8 +49,10 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
 
   const editRecordMutation = useMutation({
     mutationFn: async (data: EditFinancialRecordForm) => {
+      const finalCategory = showCustomCategory ? customCategory : data.category;
       const payload = {
         ...data,
+        category: finalCategory,
         amount: Math.round(data.amount * 100), // Convert to cents
         date: data.date, // Keep as string for backend to transform
       };
@@ -64,6 +64,7 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
         description: "Your financial record has been successfully updated",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/financial-analysis'] });
       onClose();
     },
     onError: (error) => {
@@ -76,7 +77,34 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
   });
 
   const onSubmit = (data: EditFinancialRecordForm) => {
+    const finalCategory = showCustomCategory ? customCategory : data.category;
+    
+    // Validate custom category if needed
+    if (showCustomCategory && !customCategory.trim()) {
+      form.setError("category", { message: "Category is required" });
+      return;
+    }
+    
+    // Validate that we have a category
+    if (!finalCategory?.trim()) {
+      form.setError("category", { message: "Category is required" });
+      return;
+    }
+    
+    form.clearErrors("category");
     editRecordMutation.mutate(data);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    if (value === "Other") {
+      setShowCustomCategory(true);
+      form.setValue("category", "custom");
+      form.clearErrors("category");
+    } else {
+      setShowCustomCategory(false);
+      form.setValue("category", value);
+      form.clearErrors("category");
+    }
   };
 
   const selectedType = form.watch('type');
@@ -94,17 +122,21 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
             <Select 
               value={form.watch("type")} 
               onValueChange={(value) => {
-                form.setValue("type", value as "income" | "expense" | "investment");
+                form.setValue("type", value as "revenue" | "expense" | "other");
                 form.setValue("category", ""); // Reset category when type changes
+                setShowCustomCategory(false);
+                setCustomCategory("");
               }}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="investment">Investment</SelectItem>
+                {FINANCIAL_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {form.formState.errors.type && (
@@ -114,21 +146,51 @@ export default function EditFinancialRecordModal({ record, isOpen, onClose }: Ed
 
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select 
-              value={form.watch("category")} 
-              onValueChange={(value) => form.setValue("category", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableCategories.map((category) => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.formState.errors.category && (
-              <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
+            {!showCustomCategory ? (
+              <Select 
+                value={form.watch("category")} 
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCategories.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter custom category"
+                  value={customCategory}
+                  onChange={(e) => {
+                    setCustomCategory(e.target.value);
+                    if (e.target.value.trim()) {
+                      form.clearErrors("category");
+                    }
+                  }}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setCustomCategory("");
+                  }}
+                >
+                  Choose from list
+                </Button>
+              </div>
+            )}
+            {(form.formState.errors.category || (showCustomCategory && !customCategory.trim())) && (
+              <p className="text-sm text-red-600">
+                {form.formState.errors.category?.message || "Category is required"}
+              </p>
             )}
           </div>
 
