@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema } from "@shared/schema";
+import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { z } from "zod";
@@ -440,6 +440,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting calendar event:', error);
       res.status(500).json({ message: 'Failed to delete calendar event' });
+    }
+  });
+
+  // Financial Records routes
+  app.get('/api/financial-records', async (req: Request, res: Response) => {
+    try {
+      const records = await storage.getFinancialRecords();
+      res.json(records);
+    } catch (error) {
+      console.error('Error fetching financial records:', error);
+      res.status(500).json({ message: 'Failed to fetch financial records' });
+    }
+  });
+
+  app.get('/api/financial-records/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const record = await storage.getFinancialRecord(id);
+      if (!record) {
+        res.status(404).json({ message: 'Financial record not found' });
+      } else {
+        res.json(record);
+      }
+    } catch (error) {
+      console.error('Error fetching financial record:', error);
+      res.status(500).json({ message: 'Failed to fetch financial record' });
+    }
+  });
+
+  app.post('/api/financial-records', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertFinancialRecordSchema.parse(req.body);
+      const record = await storage.createFinancialRecord(validatedData);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error('Error creating financial record:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid input', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create financial record' });
+      }
+    }
+  });
+
+  app.patch('/api/financial-records/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const record = await storage.updateFinancialRecord(id, req.body);
+      if (!record) {
+        res.status(404).json({ message: 'Financial record not found' });
+      } else {
+        res.json(record);
+      }
+    } catch (error) {
+      console.error('Error updating financial record:', error);
+      res.status(500).json({ message: 'Failed to update financial record' });
+    }
+  });
+
+  app.delete('/api/financial-records/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteFinancialRecord(id);
+      if (!success) {
+        res.status(404).json({ message: 'Financial record not found' });
+      } else {
+        res.status(204).send();
+      }
+    } catch (error) {
+      console.error('Error deleting financial record:', error);
+      res.status(500).json({ message: 'Failed to delete financial record' });
     }
   });
 

@@ -62,6 +62,13 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEvent(id: number): Promise<boolean>;
+  
+  // Financial Records
+  getFinancialRecord(id: number): Promise<FinancialRecord | undefined>;
+  getFinancialRecords(): Promise<FinancialRecord[]>;
+  createFinancialRecord(record: InsertFinancialRecord): Promise<FinancialRecord>;
+  updateFinancialRecord(id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined>;
+  deleteFinancialRecord(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -662,6 +669,63 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error deleting calendar event:', error);
+      return false;
+    }
+  }
+
+  // Financial Records
+  async getFinancialRecord(id: number): Promise<FinancialRecord | undefined> {
+    try {
+      const [record] = await db.select().from(financialRecords)
+        .where(eq(financialRecords.id, id));
+      return record || undefined;
+    } catch (error) {
+      console.error('Error fetching financial record:', error);
+      return undefined;
+    }
+  }
+
+  async getFinancialRecords(): Promise<FinancialRecord[]> {
+    try {
+      return await db.select().from(financialRecords)
+        .orderBy(desc(financialRecords.date));
+    } catch (error) {
+      console.error('Error fetching financial records:', error);
+      return [];
+    }
+  }
+
+  async createFinancialRecord(insertRecord: InsertFinancialRecord): Promise<FinancialRecord> {
+    try {
+      const [record] = await db.insert(financialRecords)
+        .values(insertRecord)
+        .returning();
+      return record;
+    } catch (error) {
+      console.error('Error creating financial record:', error);
+      throw new Error('Failed to create financial record');
+    }
+  }
+
+  async updateFinancialRecord(id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined> {
+    try {
+      const [record] = await db.update(financialRecords)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(financialRecords.id, id))
+        .returning();
+      return record || undefined;
+    } catch (error) {
+      console.error('Error updating financial record:', error);
+      return undefined;
+    }
+  }
+
+  async deleteFinancialRecord(id: number): Promise<boolean> {
+    try {
+      await db.delete(financialRecords).where(eq(financialRecords.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting financial record:', error);
       return false;
     }
   }
