@@ -35,6 +35,10 @@ This is a full-stack TypeScript application that provides AI-powered business do
 - **Documents**: File metadata, content, and processing status
 - **Goals**: Business goals with progress tracking
 - **AI Insights**: AI-generated insights linked to documents
+- **Tasks**: Task management with status, priority, and due dates
+- **Calendar Events**: Event scheduling with all-day and timed support
+- **Conversations**: Chat conversation management
+- **Messages**: Chat message storage with role-based organization
 
 ### Core Services
 - **File Processor**: Handles document uploads and text extraction
@@ -46,6 +50,9 @@ This is a full-stack TypeScript application that provides AI-powered business do
 - **Goal Tracking**: Create, update, and monitor business goals
 - **AI Insights**: Display AI-generated business recommendations
 - **Dashboard**: Overview of key metrics and recent activity
+- **Calendar System**: Full-featured calendar with event management
+- **Task Management**: Kanban-style task board with status tracking
+- **Chat Interface**: AI assistant with context-aware responses
 
 ## Data Flow
 
@@ -116,3 +123,12 @@ Changelog:
   - Calendar events system foundation (storage layer implemented)
   - Improved business analysis and planning capabilities
   - Fixed date handling issues across all entities (tasks, goals, calendar events)
+- July 08, 2025. Complete calendar/event system implementation:
+  - Full CRUD API for calendar events (/api/calendar-events)
+  - Interactive calendar interface with weekly view
+  - Event creation modal with form validation
+  - All-day and timed event support
+  - Event deletion and management
+  - Calendar events integrated into AI assistant context
+  - Weekly navigation with Today button
+  - Upcoming events sidebar with event details

@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema } from "@shared/schema";
+import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { z } from "zod";
@@ -369,6 +369,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting task:', error);
       res.status(500).json({ message: 'Failed to delete task' });
+    }
+  });
+
+  // Calendar Events routes
+  app.get('/api/calendar-events', async (req: Request, res: Response) => {
+    try {
+      const events = await storage.getCalendarEvents();
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      res.status(500).json({ message: 'Failed to fetch calendar events' });
+    }
+  });
+
+  app.post('/api/calendar-events', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertCalendarEventSchema.parse(req.body);
+      const event = await storage.createCalendarEvent(validatedData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid input', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create calendar event' });
+      }
+    }
+  });
+
+  app.patch('/api/calendar-events/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await storage.updateCalendarEvent(id, req.body);
+      if (!event) {
+        res.status(404).json({ message: 'Calendar event not found' });
+      } else {
+        res.json(event);
+      }
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      res.status(500).json({ message: 'Failed to update calendar event' });
+    }
+  });
+
+  app.delete('/api/calendar-events/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteCalendarEvent(id);
+      if (!success) {
+        res.status(404).json({ message: 'Calendar event not found' });
+      } else {
+        res.status(204).send();
+      }
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      res.status(500).json({ message: 'Failed to delete calendar event' });
     }
   });
 
