@@ -119,14 +119,77 @@ export async function generateGoalRecommendations(goals: string[], documentConte
   }
 }
 
-export async function generateChatResponse(messages: Array<{role: string; content: string}>): Promise<string> {
+export async function generateChatResponse(
+  messages: Array<{role: string; content: string}>,
+  contextData?: {
+    tasks?: Array<any>;
+    goals?: Array<any>;
+    documents?: Array<any>;
+    insights?: Array<any>;
+    calendarEvents?: Array<any>;
+  }
+): Promise<string> {
   try {
+    let systemMessage = "You are an AI business assistant. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.";
+    
+    // Add context data to system message if available
+    if (contextData) {
+      systemMessage += "\n\nYou have access to the following business data:";
+      
+      if (contextData.tasks?.length) {
+        systemMessage += `\n\nTasks (${contextData.tasks.length} total):\n`;
+        contextData.tasks.forEach((task, index) => {
+          systemMessage += `${index + 1}. ${task.title} - ${task.status} (Priority: ${task.priority})`;
+          if (task.description) systemMessage += ` - ${task.description}`;
+          if (task.dueDate) systemMessage += ` - Due: ${new Date(task.dueDate).toLocaleDateString()}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.goals?.length) {
+        systemMessage += `\n\nGoals (${contextData.goals.length} total):\n`;
+        contextData.goals.forEach((goal, index) => {
+          systemMessage += `${index + 1}. ${goal.title} - ${goal.status} (Target: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'})`;
+          if (goal.description) systemMessage += ` - ${goal.description}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.documents?.length) {
+        systemMessage += `\n\nRecent Documents (${contextData.documents.length} total):\n`;
+        contextData.documents.forEach((doc, index) => {
+          systemMessage += `${index + 1}. ${doc.filename} - ${doc.status} (${new Date(doc.createdAt).toLocaleDateString()})`;
+          if (doc.summary) systemMessage += ` - ${doc.summary.substring(0, 100)}...`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.insights?.length) {
+        systemMessage += `\n\nAI Insights (${contextData.insights.length} total):\n`;
+        contextData.insights.forEach((insight, index) => {
+          systemMessage += `${index + 1}. ${insight.type}: ${insight.title} - ${insight.content.substring(0, 100)}...`;
+          systemMessage += "\n";
+        });
+      }
+      
+      if (contextData.calendarEvents?.length) {
+        systemMessage += `\n\nCalendar Events (${contextData.calendarEvents.length} total):\n`;
+        contextData.calendarEvents.forEach((event, index) => {
+          systemMessage += `${index + 1}. ${event.title} - ${new Date(event.startDate).toLocaleDateString()} to ${new Date(event.endDate).toLocaleDateString()}`;
+          if (event.description) systemMessage += ` - ${event.description}`;
+          systemMessage += "\n";
+        });
+      }
+      
+      systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, or calendar events when appropriate.";
+    }
+    
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // using gpt-4o-mini as requested by user
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are an AI business assistant. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide."
+          content: systemMessage
         },
         ...messages.map(msg => ({
           role: msg.role as "user" | "assistant" | "system",

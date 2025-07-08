@@ -104,6 +104,8 @@ export const insertGoalSchema = createInsertSchema(goals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  targetDate: z.union([z.string(), z.null()]).optional(),
 });
 
 export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({

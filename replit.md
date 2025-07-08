@@ -110,3 +110,9 @@ Changelog:
   - Task status toggling and deletion
   - Priority levels (high, medium, low) and due date support
   - Backend API routes for full CRUD operations
+- July 08, 2025. Enhanced AI assistant with comprehensive data access:
+  - AI now has access to all tasks, goals, documents, and insights
+  - Context-aware responses that reference specific business data
+  - Calendar events system foundation (storage layer implemented)
+  - Improved business analysis and planning capabilities
+  - Fixed date handling issues across all entities (tasks, goals, calendar events)

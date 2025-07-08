@@ -24,7 +24,7 @@ export interface IStorage {
   // Goals
   getGoal(id: number): Promise<Goal | undefined>;
   getGoals(): Promise<Goal[]>;
-  createGoal(goal: InsertGoal): Promise<Goal>;
+  createGoal(goal: any): Promise<Goal>;
   updateGoal(id: number, updates: Partial<Goal>): Promise<Goal | undefined>;
   deleteGoal(id: number): Promise<boolean>;
   
@@ -55,6 +55,13 @@ export interface IStorage {
   createTask(task: any): Promise<Task>;
   updateTask(id: number, updates: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<boolean>;
+  
+  // Calendar Events
+  getCalendarEvent(id: number): Promise<CalendarEvent | undefined>;
+  getCalendarEvents(): Promise<CalendarEvent[]>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
+  deleteCalendarEvent(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -65,6 +72,7 @@ export class MemStorage implements IStorage {
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
   private tasks: Map<number, Task>;
+  private calendarEvents: Map<number, CalendarEvent>;
   private currentUserId: number;
   private currentDocumentId: number;
   private currentGoalId: number;
@@ -72,6 +80,7 @@ export class MemStorage implements IStorage {
   private currentConversationId: number;
   private currentMessageId: number;
   private currentTaskId: number;
+  private currentCalendarEventId: number;
 
   constructor() {
     this.users = new Map();
@@ -81,6 +90,7 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
     this.messages = new Map();
     this.tasks = new Map();
+    this.calendarEvents = new Map();
     this.currentUserId = 1;
     this.currentDocumentId = 1;
     this.currentGoalId = 1;
@@ -88,6 +98,7 @@ export class MemStorage implements IStorage {
     this.currentConversationId = 1;
     this.currentMessageId = 1;
     this.currentTaskId = 1;
+    this.currentCalendarEventId = 1;
   }
 
   // Users
@@ -159,7 +170,7 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createGoal(insertGoal: InsertGoal): Promise<Goal> {
+  async createGoal(insertGoal: any): Promise<Goal> {
     const id = this.currentGoalId++;
     const goal: Goal = {
       ...insertGoal,
@@ -349,6 +360,48 @@ export class MemStorage implements IStorage {
   async deleteTask(id: number): Promise<boolean> {
     return this.tasks.delete(id);
   }
+
+  async getCalendarEvent(id: number): Promise<CalendarEvent | undefined> {
+    return this.calendarEvents.get(id);
+  }
+
+  async getCalendarEvents(): Promise<CalendarEvent[]> {
+    return Array.from(this.calendarEvents.values()).sort(
+      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
+  }
+
+  async createCalendarEvent(insertEvent: InsertCalendarEvent): Promise<CalendarEvent> {
+    const id = this.currentCalendarEventId++;
+    const event: CalendarEvent = {
+      ...insertEvent,
+      id,
+      description: insertEvent.description || null,
+      allDay: insertEvent.allDay || false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.calendarEvents.set(id, event);
+    return event;
+  }
+
+  async updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const event = this.calendarEvents.get(id);
+    if (!event) return undefined;
+    
+    const updatedEvent: CalendarEvent = {
+      ...event,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.calendarEvents.set(id, updatedEvent);
+    return updatedEvent;
+  }
+
+  async deleteCalendarEvent(id: number): Promise<boolean> {
+    const deleted = this.calendarEvents.delete(id);
+    return deleted;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -410,7 +463,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(goals).orderBy(desc(goals.createdAt));
   }
 
-  async createGoal(insertGoal: InsertGoal): Promise<Goal> {
+  async createGoal(insertGoal: any): Promise<Goal> {
     const [goal] = await db
       .insert(goals)
       .values(insertGoal)
@@ -561,6 +614,54 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error deleting task:', error);
+      return false;
+    }
+  }
+
+  async getCalendarEvent(id: number): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    return event || undefined;
+  }
+
+  async getCalendarEvents(): Promise<CalendarEvent[]> {
+    try {
+      const events = await db.select().from(calendarEvents).orderBy(calendarEvents.startDate);
+      return events;
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      return [];
+    }
+  }
+
+  async createCalendarEvent(insertEvent: InsertCalendarEvent): Promise<CalendarEvent> {
+    try {
+      const [event] = await db.insert(calendarEvents).values(insertEvent).returning();
+      return event;
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      throw error;
+    }
+  }
+
+  async updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    try {
+      const [event] = await db.update(calendarEvents)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(calendarEvents.id, id))
+        .returning();
+      return event || undefined;
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      return undefined;
+    }
+  }
+
+  async deleteCalendarEvent(id: number): Promise<boolean> {
+    try {
+      await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
       return false;
     }
   }

@@ -96,7 +96,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/goals', async (req: Request, res: Response) => {
     try {
       const validatedData = insertGoalSchema.parse(req.body);
-      const goal = await storage.createGoal(validatedData);
+      // Convert targetDate string to Date object if provided
+      const goalData = {
+        ...validatedData,
+        targetDate: validatedData.targetDate ? new Date(validatedData.targetDate) : null
+      };
+      const goal = await storage.createGoal(goalData);
       res.json(goal);
     } catch (error) {
       console.error('Error creating goal:', error);
@@ -248,8 +253,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
         
         try {
-          // Generate AI response
-          const aiResponse = await generateChatResponse(chatHistory);
+          // Fetch context data for AI
+          const [tasks, goals, documents, insights, calendarEvents] = await Promise.all([
+            storage.getTasks(),
+            storage.getGoals(),
+            storage.getDocuments(),
+            storage.getAiInsights(),
+            storage.getCalendarEvents()
+          ]);
+          
+          const contextData = {
+            tasks,
+            goals,
+            documents,
+            insights,
+            calendarEvents
+          };
+          
+          // Generate AI response with context
+          const aiResponse = await generateChatResponse(chatHistory, contextData);
           
           // Save AI response
           const aiMessage = await storage.createMessage({
