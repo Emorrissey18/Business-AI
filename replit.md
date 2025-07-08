@@ -204,3 +204,11 @@ Changelog:
   - Both edit modals now support custom categories with "Other" option
   - AI financial analysis system analyzes performance indicators and adjusts totals automatically
   - Added AI insights panel showing revenue growth, expense efficiency, and profit margins
+- July 08, 2025. Fixed financial calculations and terminology:
+  - Fixed date formatting error in edit financial record modal
+  - Updated backend to properly handle date string conversion
+  - Fixed database storage layer to process date objects correctly
+  - Changed "Net Cash Flow" to "Net Profit" throughout application
+  - Updated profit calculation: Net Profit = Revenue - Expenses (excludes investments/funding)
+  - AI analysis now correctly excludes funding from profit calculations
+  - Only true business revenue counts toward profit, not investment or funding

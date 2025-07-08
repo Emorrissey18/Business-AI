@@ -111,14 +111,14 @@ export default function Financials() {
         revenue: aiAnalysis.adjustedRevenue,
         expenses: aiAnalysis.adjustedExpenses,
         investments: aiAnalysis.adjustedInvestments,
-        net: aiAnalysis.adjustedNet
+        net: aiAnalysis.adjustedNetProfit
       };
     }
     
     const revenue = filteredRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0);
     const expenses = filteredRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
     const investments = filteredRecords.filter(r => r.type === 'other').reduce((sum, r) => sum + r.amount, 0);
-    const net = revenue - expenses - investments;
+    const net = revenue - expenses; // Net profit = revenue - expenses only
     
     return { revenue, expenses, investments, net };
   };
@@ -248,7 +248,7 @@ export default function Financials() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Net Cash Flow {aiAnalysis ? '(AI Adjusted)' : ''}</p>
+                <p className="text-sm text-gray-600">Net Profit {aiAnalysis ? '(AI Adjusted)' : ''}</p>
                 <p className={cn("text-2xl font-bold", totals.net >= 0 ? "text-green-600" : "text-red-600")}>
                   {formatAmount(totals.net)}
                 </p>

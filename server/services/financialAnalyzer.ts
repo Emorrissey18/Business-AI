@@ -7,7 +7,7 @@ export interface FinancialAnalysis {
   adjustedRevenue: number;
   adjustedExpenses: number;
   adjustedInvestments: number;
-  adjustedNet: number;
+  adjustedNetProfit: number;
   insights: string[];
   performanceMetrics: {
     revenueGrowth: number; // percentage
@@ -25,7 +25,7 @@ export interface PerformanceIndicators {
 
 export async function analyzeFinancialRecords(records: FinancialRecord[]): Promise<FinancialAnalysis> {
   try {
-    // Calculate base totals
+    // Calculate base totals - only include true business revenue, not funding
     const baseRevenue = records.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0);
     const baseExpenses = records.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
     const baseInvestments = records.filter(r => r.type === 'other').reduce((sum, r) => sum + r.amount, 0);
@@ -59,13 +59,15 @@ export async function analyzeFinancialRecords(records: FinancialRecord[]): Promi
 
     Based on your analysis, provide adjustments to the financial totals and key insights.
     Consider descriptions that indicate over/under performance and adjust totals accordingly.
+    
+    IMPORTANT: Net profit = Revenue - Expenses ONLY (do NOT include investments/funding in profit calculation)
 
     Return your analysis in the following JSON format:
     {
       "adjustedRevenue": number,
       "adjustedExpenses": number,
       "adjustedInvestments": number,
-      "adjustedNet": number,
+      "adjustedNetProfit": number,
       "insights": ["insight1", "insight2", "insight3"],
       "performanceMetrics": {
         "revenueGrowth": number,
@@ -98,7 +100,7 @@ export async function analyzeFinancialRecords(records: FinancialRecord[]): Promi
       adjustedRevenue: Math.round((analysis.adjustedRevenue || baseRevenue / 100) * 100),
       adjustedExpenses: Math.round((analysis.adjustedExpenses || baseExpenses / 100) * 100),
       adjustedInvestments: Math.round((analysis.adjustedInvestments || baseInvestments / 100) * 100),
-      adjustedNet: Math.round((analysis.adjustedNet || (baseRevenue - baseExpenses - baseInvestments) / 100) * 100),
+      adjustedNetProfit: Math.round((analysis.adjustedNetProfit || (baseRevenue - baseExpenses) / 100) * 100),
       insights: analysis.insights || [],
       performanceMetrics: {
         revenueGrowth: analysis.performanceMetrics?.revenueGrowth || 0,
@@ -119,7 +121,7 @@ export async function analyzeFinancialRecords(records: FinancialRecord[]): Promi
       adjustedRevenue: baseRevenue,
       adjustedExpenses: baseExpenses,
       adjustedInvestments: baseInvestments,
-      adjustedNet: baseRevenue - baseExpenses - baseInvestments,
+      adjustedNetProfit: baseRevenue - baseExpenses,
       insights: ["Financial analysis temporarily unavailable"],
       performanceMetrics: {
         revenueGrowth: 0,
