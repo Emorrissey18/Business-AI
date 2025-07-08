@@ -76,28 +76,24 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                        <button 
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             // Add edit functionality here
                           }}
                         >
                           <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                        </button>
+                        <button 
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             // Add delete functionality here
                           }}
                         >
                           <Trash2 className="h-3 w-3" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
