@@ -76,6 +76,12 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
         return;
       }
       
+      // Validate that we have a category
+      if (!finalCategory.trim()) {
+        setErrors({ category: "Category is required" });
+        return;
+      }
+      
       const finalData = {
         ...formData,
         category: finalCategory,
@@ -109,9 +115,11 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
     if (value === "Other") {
       setShowCustomCategory(true);
       setFormData({ ...formData, category: "" });
+      setErrors({ ...errors, category: "" });
     } else {
       setShowCustomCategory(false);
       setFormData({ ...formData, category: value });
+      setErrors({ ...errors, category: "" });
     }
   };
 
@@ -194,7 +202,12 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
                 <Input
                   placeholder="Enter custom category"
                   value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
+                  onChange={(e) => {
+                    setCustomCategory(e.target.value);
+                    if (e.target.value.trim()) {
+                      setErrors({ ...errors, category: "" });
+                    }
+                  }}
                 />
                 <Button 
                   type="button" 

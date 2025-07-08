@@ -74,10 +74,19 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
   });
 
   const onSubmit = (data: NewFinancialRecordForm) => {
+    // Clear any previous errors
+    form.clearErrors("category");
+    
     const finalCategory = showCustomCategory ? customCategory : data.category;
     
     // Validate custom category if needed
     if (showCustomCategory && !customCategory.trim()) {
+      form.setError("category", { message: "Category is required" });
+      return;
+    }
+    
+    // Validate that we have a category
+    if (!finalCategory.trim()) {
       form.setError("category", { message: "Category is required" });
       return;
     }
@@ -103,9 +112,11 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
     if (value === "Other") {
       setShowCustomCategory(true);
       form.setValue("category", "");
+      form.clearErrors("category");
     } else {
       setShowCustomCategory(false);
       form.setValue("category", value);
+      form.clearErrors("category");
     }
   };
 
@@ -165,7 +176,12 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
                 <Input
                   placeholder="Enter custom category"
                   value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
+                  onChange={(e) => {
+                    setCustomCategory(e.target.value);
+                    if (e.target.value.trim()) {
+                      form.clearErrors("category");
+                    }
+                  }}
                 />
                 <Button 
                   type="button" 
