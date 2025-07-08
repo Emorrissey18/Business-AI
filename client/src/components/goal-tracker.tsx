@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import NewGoalModal from "./modals/new-goal-modal";
+import EditGoalModal from "./modals/edit-goal-modal";
 
 interface GoalTrackerProps {
   title?: string;
@@ -20,6 +21,7 @@ interface GoalTrackerProps {
 
 export default function GoalTracker({ title = "Goal Tracking", showAddButton = true, limit }: GoalTrackerProps) {
   const [showNewGoalModal, setShowNewGoalModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -140,7 +142,12 @@ export default function GoalTracker({ title = "Goal Tracking", showAddButton = t
                       Updated {formatDistanceToNow(new Date(goal.updatedAt), { addSuffix: true })}
                     </span>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm" className="text-primary hover:text-blue-700">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-primary hover:text-blue-700"
+                        onClick={() => setEditingGoal(goal)}
+                      >
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
                       </Button>
@@ -165,6 +172,14 @@ export default function GoalTracker({ title = "Goal Tracking", showAddButton = t
         isOpen={showNewGoalModal}
         onClose={() => setShowNewGoalModal(false)}
       />
+      
+      {editingGoal && (
+        <EditGoalModal
+          goal={editingGoal}
+          isOpen={!!editingGoal}
+          onClose={() => setEditingGoal(null)}
+        />
+      )}
     </>
   );
 }

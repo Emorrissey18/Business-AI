@@ -164,3 +164,10 @@ Changelog:
   - Enhanced AI prompts to eliminate "updating now" delays without actual function calls
   - Goal progress now correctly shows 100% maximum even when targets are exceeded
   - Function calls now work consistently on first attempt for all progress updates
+- July 08, 2025. Added goal editing functionality:
+  - Created EditGoalModal component for comprehensive goal editing
+  - Added ability to edit goal title, description, target date, and status
+  - Implemented manual progress percentage adjustment with slider control
+  - Added edit button to each goal in the goal tracker
+  - Full CRUD operations now available for goals (create, read, update, delete)
+  - Progress slider provides precise control from 0% to 100%
