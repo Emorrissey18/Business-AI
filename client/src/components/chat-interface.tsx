@@ -26,6 +26,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Update currentConversationId when conversationId prop changes
+  useEffect(() => {
+    setCurrentConversationId(conversationId || null);
+  }, [conversationId]);
+
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: [`/api/messages/${currentConversationId}`, currentConversationId],
     enabled: !!currentConversationId,
