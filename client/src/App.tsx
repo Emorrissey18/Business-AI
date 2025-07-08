@@ -10,6 +10,7 @@ import Goals from "@/pages/goals";
 import Tasks from "@/pages/tasks";
 import Calendar from "@/pages/calendar";
 import Financials from "@/pages/financials";
+import Insights from "@/pages/insights";
 import Header from "@/components/header";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/tasks" component={Tasks} />
       <Route path="/calendar" component={Calendar} />
       <Route path="/financials" component={Financials} />
+      <Route path="/insights" component={Insights} />
       <Route component={NotFound} />
     </Switch>
   );

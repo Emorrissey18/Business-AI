@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
+import { analyzeDataCorrelations, executeCorrelationActions, generateBusinessInsights } from "./services/correlationEngine";
 import { z } from "zod";
 import path from "path";
 
@@ -473,6 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertFinancialRecordSchema.parse(req.body);
       const record = await storage.createFinancialRecord(validatedData);
+      
+      // Trigger AI correlation analysis in background
+      processFinancialCorrelation(record.id);
+      
       res.status(201).json(record);
     } catch (error) {
       console.error('Error creating financial record:', error);
@@ -567,8 +572,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Correlation endpoints
+  app.get('/api/ai/business-insights', async (req: Request, res: Response) => {
+    try {
+      const insights = await generateBusinessInsights();
+      res.json(insights);
+    } catch (error) {
+      console.error('Error generating business insights:', error);
+      res.status(500).json({ message: 'Failed to generate business insights' });
+    }
+  });
+
+  app.get('/api/ai/correlations/:financialRecordId', async (req: Request, res: Response) => {
+    try {
+      const financialRecordId = parseInt(req.params.financialRecordId);
+      const financialRecord = await storage.getFinancialRecord(financialRecordId);
+      
+      if (!financialRecord) {
+        return res.status(404).json({ message: 'Financial record not found' });
+      }
+
+      const [goals, tasks, allRecords] = await Promise.all([
+        storage.getGoals(),
+        storage.getTasks(),
+        storage.getFinancialRecords()
+      ]);
+
+      const analysis = await analyzeDataCorrelations(financialRecord, goals, tasks, allRecords);
+      res.json(analysis);
+    } catch (error) {
+      console.error('Error analyzing correlations:', error);
+      res.status(500).json({ message: 'Failed to analyze correlations' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Async function to process financial record correlations
+async function processFinancialCorrelation(financialRecordId: number) {
+  try {
+    const financialRecord = await storage.getFinancialRecord(financialRecordId);
+    if (!financialRecord) {
+      console.error('Financial record not found for correlation:', financialRecordId);
+      return;
+    }
+
+    const [goals, tasks, allRecords] = await Promise.all([
+      storage.getGoals(),
+      storage.getTasks(),
+      storage.getFinancialRecords()
+    ]);
+
+    const analysis = await analyzeDataCorrelations(financialRecord, goals, tasks, allRecords);
+    
+    // Execute correlation actions (goal progress updates, task status changes)
+    await executeCorrelationActions(analysis);
+    
+    console.log(`Processed correlations for financial record ${financialRecordId}:`, {
+      correlations: analysis.correlations.length,
+      progressUpdates: analysis.progressUpdates.length,
+      taskUpdates: analysis.taskUpdates.length
+    });
+  } catch (error) {
+    console.error('Error processing financial correlation:', error);
+  }
 }
 
 // Async function to process documents

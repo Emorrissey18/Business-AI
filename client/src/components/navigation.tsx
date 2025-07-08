@@ -13,6 +13,7 @@ const navigationItems: NavigationItem[] = [
   { href: "/tasks", label: "Tasks" },
   { href: "/calendar", label: "Calendar" },
   { href: "/financials", label: "Financials" },
+  { href: "/insights", label: "AI Insights" },
 ];
 
 export default function Navigation() {
