@@ -15,7 +15,7 @@ import { FINANCIAL_CATEGORIES, FINANCIAL_TYPES } from "@shared/constants";
 
 const newFinancialRecordSchema = z.object({
   type: z.enum(["revenue", "expense", "other"]),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().optional(), // Make optional to handle custom categories
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   description: z.string().optional(),
   date: z.string().min(1, "Date is required"),
@@ -43,6 +43,7 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
       description: '',
       date: new Date().toISOString().split('T')[0],
     },
+    mode: 'onChange',
   });
 
   const createRecordMutation = useMutation({
@@ -74,9 +75,6 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
   });
 
   const onSubmit = (data: NewFinancialRecordForm) => {
-    // Clear any previous errors
-    form.clearErrors("category");
-    
     const finalCategory = showCustomCategory ? customCategory : data.category;
     
     // Validate custom category if needed
@@ -90,6 +88,9 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
       form.setError("category", { message: "Category is required" });
       return;
     }
+    
+    // Clear any previous errors
+    form.clearErrors("category");
     
     const finalData = {
       ...data,
@@ -111,7 +112,7 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
   const handleCategoryChange = (value: string) => {
     if (value === "Other") {
       setShowCustomCategory(true);
-      form.setValue("category", "");
+      form.setValue("category", "custom"); // Set a placeholder value to pass validation
       form.clearErrors("category");
     } else {
       setShowCustomCategory(false);
@@ -126,7 +127,7 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
         <DialogHeader>
           <DialogTitle>Add Financial Record</DialogTitle>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>
             <Label htmlFor="type">Type</Label>
             <Select 
