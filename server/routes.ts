@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema } from "@shared/schema";
+import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { z } from "zod";
@@ -285,6 +285,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: 'Failed to create message' });
       }
+    }
+  });
+
+  // Tasks routes
+  app.get('/api/tasks', async (req: Request, res: Response) => {
+    try {
+      const tasks = await storage.getTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ message: 'Failed to fetch tasks' });
+    }
+  });
+
+  app.post('/api/tasks', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask(validatedData);
+      res.json(task);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid task data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create task' });
+      }
+    }
+  });
+
+  app.patch('/api/tasks/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const task = await storage.updateTask(id, updates);
+      if (!task) {
+        res.status(404).json({ message: 'Task not found' });
+      } else {
+        res.json(task);
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      res.status(500).json({ message: 'Failed to update task' });
+    }
+  });
+
+  app.delete('/api/tasks/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteTask(id);
+      if (!success) {
+        res.status(404).json({ message: 'Task not found' });
+      } else {
+        res.status(204).send();
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      res.status(500).json({ message: 'Failed to delete task' });
     }
   });
 

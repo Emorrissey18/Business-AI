@@ -48,6 +48,13 @@ export interface IStorage {
   getMessagesByConversation(conversationId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   deleteMessage(id: number): Promise<boolean>;
+  
+  // Tasks
+  getTask(id: number): Promise<Task | undefined>;
+  getTasks(): Promise<Task[]>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: number, updates: Partial<Task>): Promise<Task | undefined>;
+  deleteTask(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -57,12 +64,14 @@ export class MemStorage implements IStorage {
   private aiInsights: Map<number, AiInsight>;
   private conversations: Map<number, Conversation>;
   private messages: Map<number, Message>;
+  private tasks: Map<number, Task>;
   private currentUserId: number;
   private currentDocumentId: number;
   private currentGoalId: number;
   private currentInsightId: number;
   private currentConversationId: number;
   private currentMessageId: number;
+  private currentTaskId: number;
 
   constructor() {
     this.users = new Map();
@@ -71,12 +80,14 @@ export class MemStorage implements IStorage {
     this.aiInsights = new Map();
     this.conversations = new Map();
     this.messages = new Map();
+    this.tasks = new Map();
     this.currentUserId = 1;
     this.currentDocumentId = 1;
     this.currentGoalId = 1;
     this.currentInsightId = 1;
     this.currentConversationId = 1;
     this.currentMessageId = 1;
+    this.currentTaskId = 1;
   }
 
   // Users
@@ -293,6 +304,51 @@ export class MemStorage implements IStorage {
   async deleteMessage(id: number): Promise<boolean> {
     return this.messages.delete(id);
   }
+
+  // Tasks
+  async getTask(id: number): Promise<Task | undefined> {
+    return this.tasks.get(id);
+  }
+
+  async getTasks(): Promise<Task[]> {
+    return Array.from(this.tasks.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async createTask(insertTask: InsertTask): Promise<Task> {
+    const id = this.currentTaskId++;
+    const task: Task = {
+      ...insertTask,
+      id,
+      priority: insertTask.priority || 'medium',
+      status: insertTask.status || 'pending',
+      description: insertTask.description || null,
+      dueDate: insertTask.dueDate || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.tasks.set(id, task);
+    return task;
+  }
+
+  async updateTask(id: number, updates: Partial<Task>): Promise<Task | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+    
+    const updatedTask: Task = {
+      ...task,
+      ...updates,
+      id,
+      updatedAt: new Date(),
+    };
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    return this.tasks.delete(id);
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +513,56 @@ export class DatabaseStorage implements IStorage {
   async deleteMessage(id: number): Promise<boolean> {
     const result = await db.delete(messages).where(eq(messages.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Tasks
+  async getTask(id: number): Promise<Task | undefined> {
+    try {
+      const result = await db.select().from(tasks).where(eq(tasks.id, id));
+      return result[0];
+    } catch (error) {
+      console.error('Error fetching task:', error);
+      return undefined;
+    }
+  }
+
+  async getTasks(): Promise<Task[]> {
+    try {
+      return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
+    }
+  }
+
+  async createTask(insertTask: InsertTask): Promise<Task> {
+    try {
+      const result = await db.insert(tasks).values(insertTask).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
+  }
+
+  async updateTask(id: number, updates: Partial<Task>): Promise<Task | undefined> {
+    try {
+      const result = await db.update(tasks).set(updates).where(eq(tasks.id, id)).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating task:', error);
+      return undefined;
+    }
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    try {
+      await db.delete(tasks).where(eq(tasks.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return false;
+    }
   }
 }
 
