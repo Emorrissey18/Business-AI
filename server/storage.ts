@@ -709,8 +709,14 @@ export class DatabaseStorage implements IStorage {
 
   async updateFinancialRecord(id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined> {
     try {
+      // Ensure date is a Date object if provided
+      const processedUpdates = { ...updates };
+      if (processedUpdates.date && typeof processedUpdates.date === 'string') {
+        processedUpdates.date = new Date(processedUpdates.date);
+      }
+      
       const [record] = await db.update(financialRecords)
-        .set({ ...updates, updatedAt: new Date() })
+        .set({ ...processedUpdates, updatedAt: new Date() })
         .where(eq(financialRecords.id, id))
         .returning();
       return record || undefined;

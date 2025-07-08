@@ -84,9 +84,11 @@ export default function EditGoalModal({ goal, isOpen, onClose }: EditGoalModalPr
   });
 
   const onSubmit = (data: EditGoalForm) => {
+    const finalCategory = showCustomCategory ? customCategory : data.category;
     const formData = {
       ...data,
       progress,
+      category: finalCategory,
       targetDate: data.targetDate || undefined,
     };
     editGoalMutation.mutate(formData);

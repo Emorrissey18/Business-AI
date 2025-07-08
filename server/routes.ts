@@ -498,7 +498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/financial-records/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const record = await storage.updateFinancialRecord(id, req.body);
+      const updates = req.body;
+      
+      // Convert date string to Date object if present
+      if (updates.date) {
+        updates.date = new Date(updates.date);
+      }
+      
+      const record = await storage.updateFinancialRecord(id, updates);
       if (!record) {
         res.status(404).json({ message: 'Financial record not found' });
       } else {
