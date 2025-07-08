@@ -30,7 +30,7 @@ interface EditFinancialRecordModalProps {
 
 const FINANCIAL_CATEGORIES = {
   income: ["Sales", "Services", "Consulting", "Investments", "Other Income"],
-  expense: ["Office Supplies", "Marketing", "Travel", "Software", "Utilities", "Rent", "Salaries", "Other Expenses"],
+  expense: ["Office Supplies", "Marketing", "Travel", "Software & Tools", "Utilities", "Rent", "Salaries", "Other Expenses"],
   investment: ["Equipment", "Software", "Real Estate", "Stocks", "Other Investments"]
 };
 

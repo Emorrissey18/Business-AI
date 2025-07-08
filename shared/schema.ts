@@ -149,6 +149,8 @@ export const insertFinancialRecordSchema = createInsertSchema(financialRecords).
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  date: z.string().transform((val) => new Date(val)),
 });
 
 // Types
