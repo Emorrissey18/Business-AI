@@ -192,6 +192,24 @@ GOAL IDENTIFICATION:
           if (goal.description) systemMessage += ` - ${goal.description}`;
           systemMessage += "\n";
         });
+        
+        // Check for revenue-related goals
+        const revenueGoals = contextData.goals.filter(goal => 
+          goal.title.toLowerCase().includes('revenue') || 
+          goal.title.toLowerCase().includes('sales') ||
+          goal.title.toLowerCase().includes('income') ||
+          goal.title.toLowerCase().includes('400k') ||
+          goal.description?.toLowerCase().includes('revenue') ||
+          goal.description?.toLowerCase().includes('sales')
+        );
+        
+        if (revenueGoals.length > 0) {
+          systemMessage += `\nRevenue-Related Goals Found:\n`;
+          revenueGoals.forEach((goal, index) => {
+            systemMessage += `${index + 1}. "${goal.title}" - Target: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'}, Progress: ${goal.progress}%\n`;
+            if (goal.description) systemMessage += `   Description: ${goal.description}\n`;
+          });
+        }
       }
       
       if (contextData.documents?.length) {
@@ -250,7 +268,13 @@ GOAL IDENTIFICATION:
           });
       }
       
-      systemMessage += "\n\nIMPORTANT: You have access to complete financial records data above including current revenue totals. When users ask about revenue, growth rates, or financial performance, you MUST use the financial data provided above. Do not ask users to provide financial information that is already available in the context data. Always reference the actual financial records when discussing revenue or financial goals.";
+      systemMessage += "\n\nIMPORTANT: You have access to complete financial records data and goals above. When users ask about revenue, growth rates, or financial performance:\n";
+      systemMessage += "1. Use the financial data provided above for current revenue totals\n";
+      systemMessage += "2. Reference revenue-related goals for target amounts and dates\n";
+      systemMessage += "3. Calculate growth rates using both current financial data and goal targets\n";
+      systemMessage += "4. For monthly growth calculations, break down quarterly goals into monthly targets\n";
+      systemMessage += "5. Never ask for information that is already available in the context data\n";
+      systemMessage += "Always cross-reference goals with financial data to provide complete answers.";
     }
     
     const tools = [
