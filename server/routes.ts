@@ -277,6 +277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Debug: log financial records data
           console.log('Financial records in context:', financialRecords?.length || 0);
+          if (financialRecords?.length) {
+            const totalRevenue = financialRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0);
+            console.log('Total revenue being sent to AI:', totalRevenue);
+          }
           
           // Generate AI response with context
           const aiResult = await generateChatResponse(chatHistory, contextData);

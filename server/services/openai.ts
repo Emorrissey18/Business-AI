@@ -250,7 +250,7 @@ GOAL IDENTIFICATION:
           });
       }
       
-      systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, calendar events, or financial data when appropriate. When discussing revenue growth or financial performance, use the actual financial records data provided above.";
+      systemMessage += "\n\nIMPORTANT: You have access to complete financial records data above including current revenue totals. When users ask about revenue, growth rates, or financial performance, you MUST use the financial data provided above. Do not ask users to provide financial information that is already available in the context data. Always reference the actual financial records when discussing revenue or financial goals.";
     }
     
     const tools = [
