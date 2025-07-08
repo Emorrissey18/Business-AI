@@ -201,44 +201,50 @@ AVAILABLE ACTIONS:
       systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, or calendar events when appropriate.";
     }
     
-    const functions = [
+    const tools = [
       {
-        name: "update_task_status",
-        description: "Update the status of a specific task",
-        parameters: {
-          type: "object",
-          properties: {
-            taskId: {
-              type: "number",
-              description: "The ID of the task to update"
+        type: "function" as const,
+        function: {
+          name: "update_task_status",
+          description: "Update the status of a specific task",
+          parameters: {
+            type: "object",
+            properties: {
+              taskId: {
+                type: "number",
+                description: "The ID of the task to update"
+              },
+              status: {
+                type: "string",
+                enum: ["pending", "in_progress", "completed"],
+                description: "The new status for the task"
+              }
             },
-            status: {
-              type: "string",
-              enum: ["pending", "in_progress", "completed"],
-              description: "The new status for the task"
-            }
-          },
-          required: ["taskId", "status"]
+            required: ["taskId", "status"]
+          }
         }
       },
       {
-        name: "update_goal_progress",
-        description: "Update the progress percentage of a specific goal",
-        parameters: {
-          type: "object",
-          properties: {
-            goalId: {
-              type: "number",
-              description: "The ID of the goal to update"
+        type: "function" as const,
+        function: {
+          name: "update_goal_progress",
+          description: "Update the progress percentage of a specific goal",
+          parameters: {
+            type: "object",
+            properties: {
+              goalId: {
+                type: "number",
+                description: "The ID of the goal to update"
+              },
+              progress: {
+                type: "number",
+                minimum: 0,
+                maximum: 100,
+                description: "The new progress percentage (0-100)"
+              }
             },
-            progress: {
-              type: "number",
-              minimum: 0,
-              maximum: 100,
-              description: "The new progress percentage (0-100)"
-            }
-          },
-          required: ["goalId", "progress"]
+            required: ["goalId", "progress"]
+          }
         }
       }
     ];
@@ -255,22 +261,25 @@ AVAILABLE ACTIONS:
           content: msg.content
         }))
       ],
-      functions,
-      function_call: "auto",
+      tools,
+      tool_choice: "auto",
       max_tokens: 1000,
     });
 
     const choice = response.choices[0];
     const actions: any[] = [];
     
-    if (choice.message.function_call) {
-      const functionCall = choice.message.function_call;
-      const functionArgs = JSON.parse(functionCall.arguments || '{}');
-      
-      actions.push({
-        type: functionCall.name,
-        parameters: functionArgs
-      });
+    if (choice.message.tool_calls) {
+      for (const toolCall of choice.message.tool_calls) {
+        if (toolCall.type === "function") {
+          const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+          
+          actions.push({
+            type: toolCall.function.name,
+            parameters: functionArgs
+          });
+        }
+      }
     }
 
     return {
