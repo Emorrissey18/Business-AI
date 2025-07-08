@@ -246,9 +246,10 @@ GOAL IDENTIFICATION:
         const expenseRecords = contextData.financialRecords.filter(record => record.type === 'expense');
         const otherRecords = contextData.financialRecords.filter(record => record.type === 'other');
         
-        const totalRevenue = revenueRecords.reduce((sum, record) => sum + record.amount, 0);
-        const totalExpenses = expenseRecords.reduce((sum, record) => sum + record.amount, 0);
-        const totalOther = otherRecords.reduce((sum, record) => sum + record.amount, 0);
+        // Financial amounts are stored in cents in the database, convert to dollars
+        const totalRevenue = revenueRecords.reduce((sum, record) => sum + (record.amount / 100), 0);
+        const totalExpenses = expenseRecords.reduce((sum, record) => sum + (record.amount / 100), 0);
+        const totalOther = otherRecords.reduce((sum, record) => sum + (record.amount / 100), 0);
         const netProfit = totalRevenue - totalExpenses;
         
         systemMessage += `\nFinancial Summary:\n`;
@@ -262,7 +263,9 @@ GOAL IDENTIFICATION:
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 10)
           .forEach((record, index) => {
-            systemMessage += `${index + 1}. ${record.type.toUpperCase()} - ${record.category} - $${record.amount.toLocaleString()} (${new Date(record.date).toLocaleDateString()})`;
+            // Convert cents to dollars for display
+            const amountInDollars = record.amount / 100;
+            systemMessage += `${index + 1}. ${record.type.toUpperCase()} - ${record.category} - $${amountInDollars.toLocaleString()} (${new Date(record.date).toLocaleDateString()})`;
             if (record.description) systemMessage += ` - ${record.description}`;
             systemMessage += "\n";
           });
