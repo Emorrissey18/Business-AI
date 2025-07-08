@@ -189,3 +189,10 @@ Changelog:
   - API endpoints: /api/ai/business-insights and /api/ai/correlations
   - Fixed goal tracking to calculate accurate progress based on revenue targets
   - AI agent now properly updates goal progress using mathematical calculations
+- July 08, 2025. Fixed custom category validation system:
+  - Resolved form validation bug preventing custom category creation
+  - Modified form schema to make category field optional for custom inputs
+  - Enhanced error handling and real-time validation clearing
+  - Applied fixes to both financial records and goals modals
+  - Users can now successfully create custom categories like "R&D", "Consulting", etc.
+  - Custom categories work seamlessly with AI correlation system
