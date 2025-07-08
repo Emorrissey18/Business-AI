@@ -474,7 +474,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/financial-records', async (req: Request, res: Response) => {
     try {
       const validatedData = insertFinancialRecordSchema.parse(req.body);
-      const record = await storage.createFinancialRecord(validatedData);
+      const recordData = {
+        ...validatedData,
+        date: new Date(validatedData.date)
+      };
+      const record = await storage.createFinancialRecord(recordData);
       
       // Trigger AI correlation analysis in background
       processFinancialCorrelation(record.id);

@@ -26,6 +26,8 @@ export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
+  type: text("type").notNull(), // revenue, expense, other
+  category: text("category").notNull(),
   targetDate: timestamp("target_date"),
   progress: integer("progress").notNull().default(0), // 0-100
   status: text("status").notNull().default("active"), // active, completed, paused
@@ -83,7 +85,7 @@ export const calendarEvents = pgTable("calendar_events", {
 
 export const financialRecords = pgTable("financial_records", {
   id: serial("id").primaryKey(),
-  type: text("type").notNull(), // income, expense, investment
+  type: text("type").notNull(), // revenue, expense, other
   category: text("category").notNull(),
   amount: integer("amount").notNull(), // in cents
   description: text("description"),
@@ -106,6 +108,8 @@ export const insertGoalSchema = createInsertSchema(goals).omit({
   updatedAt: true,
 }).extend({
   targetDate: z.union([z.string(), z.null()]).optional(),
+  type: z.enum(["revenue", "expense", "other"]),
+  category: z.string().min(1, "Category is required"),
 });
 
 export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
@@ -146,11 +150,11 @@ export const insertCalendarEventSchema = z.object({
 });
 
 export const insertFinancialRecordSchema = z.object({
-  type: z.enum(['income', 'expense', 'investment']),
-  category: z.string().min(1),
-  amount: z.number().int(),
+  type: z.enum(["revenue", "expense", "other"]),
+  category: z.string().min(1, "Category is required"),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
   description: z.string().optional(),
-  date: z.union([z.string(), z.date()]).transform((val) => typeof val === 'string' ? new Date(val) : val),
+  date: z.string().min(1, "Date is required"),
 });
 
 // Types

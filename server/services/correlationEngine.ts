@@ -52,9 +52,9 @@ EXISTING GOALS:
 ${allGoals.map(g => `- ID: ${g.id}, Title: "${g.title}", Progress: ${g.progress}%, Target: ${g.targetDate}, Status: ${g.status}, Description: ${g.description || 'No description'}`).join('\n')}
 
 TOTAL REVENUE ANALYSIS:
-- Total Income: $${(existingFinancialRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
+- Total Revenue: $${(existingFinancialRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
 - Total Expenses: $${(existingFinancialRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
-- Net Revenue: $${((existingFinancialRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0) - existingFinancialRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)) / 100).toFixed(2)}
+- Net Revenue: $${((existingFinancialRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0) - existingFinancialRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)) / 100).toFixed(2)}
 
 EXISTING TASKS:
 ${allTasks.map(t => `- ID: ${t.id}, Title: "${t.title}", Status: ${t.status}, Priority: ${t.priority}, Due: ${t.dueDate || 'No due date'}`).join('\n')}

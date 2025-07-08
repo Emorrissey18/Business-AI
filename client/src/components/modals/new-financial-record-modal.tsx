@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
+import { FINANCIAL_CATEGORIES, FINANCIAL_TYPES } from "@shared/constants";
 
 const newFinancialRecordSchema = z.object({
-  type: z.enum(['income', 'expense', 'investment']),
+  type: z.enum(["revenue", "expense", "other"]),
   category: z.string().min(1, "Category is required"),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   description: z.string().optional(),
@@ -26,15 +28,11 @@ interface NewFinancialRecordModalProps {
   onClose: () => void;
 }
 
-const FINANCIAL_CATEGORIES = {
-  income: ["Sales", "Services", "Consulting", "Investments", "Other Income"],
-  expense: ["Office Supplies", "Marketing", "Travel", "Software & Tools", "Utilities", "Rent", "Salaries", "Other Expenses"],
-  investment: ["Equipment", "Software", "Real Estate", "Stocks", "Other Investments"]
-};
-
 export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancialRecordModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [customCategory, setCustomCategory] = useState("");
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const form = useForm<NewFinancialRecordForm>({
     resolver: zodResolver(newFinancialRecordSchema),
@@ -49,40 +47,62 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
 
   const createRecordMutation = useMutation({
     mutationFn: async (data: NewFinancialRecordForm) => {
-      const payload = {
+      // Convert amount to cents for storage
+      const recordData = {
         ...data,
-        amount: Math.round(data.amount * 100), // Convert to cents
-        date: data.date, // Keep as string for backend to transform
+        amount: Math.round(data.amount * 100),
       };
-      await apiRequest('POST', '/api/financial-records', payload);
+      const response = await apiRequest('POST', '/api/financial-records', recordData);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Record created",
+        title: "Financial record created",
         description: "Your financial record has been successfully created",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-records'] });
-      onClose();
-      form.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      handleClose();
     },
     onError: (error) => {
       toast({
-        title: "Creation failed",
-        description: error.message,
+        title: "Error",
+        description: "Failed to create financial record. Please try again.",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: NewFinancialRecordForm) => {
-    createRecordMutation.mutate(data);
+    const finalData = {
+      ...data,
+      category: showCustomCategory ? customCategory : data.category,
+    };
+    createRecordMutation.mutate(finalData);
+  };
+
+  const handleClose = () => {
+    form.reset();
+    setCustomCategory("");
+    setShowCustomCategory(false);
+    onClose();
   };
 
   const selectedType = form.watch('type');
   const availableCategories = FINANCIAL_CATEGORIES[selectedType] || [];
 
+  const handleCategoryChange = (value: string) => {
+    if (value === "Other") {
+      setShowCustomCategory(true);
+      form.setValue("category", "");
+    } else {
+      setShowCustomCategory(false);
+      form.setValue("category", value);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Financial Record</DialogTitle>
@@ -93,17 +113,20 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
             <Select 
               value={form.watch("type")} 
               onValueChange={(value) => {
-                form.setValue("type", value as "income" | "expense" | "investment");
+                form.setValue("type", value as "revenue" | "expense" | "other");
                 form.setValue("category", ""); // Reset category when type changes
+                setShowCustomCategory(false);
               }}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="investment">Investment</SelectItem>
+                {FINANCIAL_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {form.formState.errors.type && (
@@ -113,19 +136,42 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
 
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select 
-              value={form.watch("category")} 
-              onValueChange={(value) => form.setValue("category", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableCategories.map((category) => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!showCustomCategory ? (
+              <Select 
+                value={form.watch("category")} 
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCategories.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter custom category"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setCustomCategory("");
+                  }}
+                >
+                  Choose from list
+                </Button>
+              </div>
+            )}
             {form.formState.errors.category && (
               <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
             )}
@@ -134,12 +180,10 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
           <div>
             <Label htmlFor="amount">Amount ($)</Label>
             <Input
-              id="amount"
               type="number"
               step="0.01"
-              min="0"
               {...form.register("amount", { valueAsNumber: true })}
-              placeholder="0.00"
+              className="mt-1"
             />
             {form.formState.errors.amount && (
               <p className="text-sm text-red-600">{form.formState.errors.amount.message}</p>
@@ -147,33 +191,32 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
           </div>
 
           <div>
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Textarea
+              {...form.register("description")}
+              placeholder="Enter description..."
+              className="mt-1"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="date">Date</Label>
             <Input
-              id="date"
               type="date"
               {...form.register("date")}
+              className="mt-1"
             />
             {form.formState.errors.date && (
               <p className="text-sm text-red-600">{form.formState.errors.date.message}</p>
             )}
           </div>
 
-          <div>
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              {...form.register("description")}
-              placeholder="Enter description"
-              rows={3}
-            />
-          </div>
-
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={createRecordMutation.isPending}>
-              {createRecordMutation.isPending ? "Creating..." : "Create Record"}
+              {createRecordMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
         </form>

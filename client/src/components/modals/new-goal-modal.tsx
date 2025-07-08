@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { insertGoalSchema } from "@shared/schema";
+import { FINANCIAL_CATEGORIES, FINANCIAL_TYPES } from "@shared/constants";
 import { z } from "zod";
 
 interface NewGoalModalProps {
@@ -23,9 +25,13 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    type: "revenue" as "revenue" | "expense" | "other",
+    category: "",
     targetDate: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customCategory, setCustomCategory] = useState("");
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,7 +68,11 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
     setErrors({});
 
     try {
-      const validatedData = goalFormSchema.parse(formData);
+      const finalData = {
+        ...formData,
+        category: showCustomCategory ? customCategory : formData.category,
+      };
+      const validatedData = goalFormSchema.parse(finalData);
       createGoalMutation.mutate(validatedData);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -78,9 +88,23 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
   };
 
   const handleClose = () => {
-    setFormData({ title: "", description: "", targetDate: "" });
+    setFormData({ title: "", description: "", type: "revenue", category: "", targetDate: "" });
     setErrors({});
+    setCustomCategory("");
+    setShowCustomCategory(false);
     onClose();
+  };
+
+  const availableCategories = FINANCIAL_CATEGORIES[formData.type] || [];
+
+  const handleCategoryChange = (value: string) => {
+    if (value === "Other") {
+      setShowCustomCategory(true);
+      setFormData({ ...formData, category: "" });
+    } else {
+      setShowCustomCategory(false);
+      setFormData({ ...formData, category: value });
+    }
   };
 
   return (
@@ -114,6 +138,70 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
               className={errors.description ? "border-red-500" : ""}
             />
             {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description}</p>}
+          </div>
+          
+          <div>
+            <Label htmlFor="type">Type</Label>
+            <Select 
+              value={formData.type} 
+              onValueChange={(value) => {
+                setFormData({ ...formData, type: value as "revenue" | "expense" | "other", category: "" });
+                setShowCustomCategory(false);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FINANCIAL_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.type && <p className="text-sm text-red-500 mt-1">{errors.type}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="category">Category</Label>
+            {!showCustomCategory ? (
+              <Select 
+                value={formData.category} 
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCategories.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter custom category"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setCustomCategory("");
+                  }}
+                >
+                  Choose from list
+                </Button>
+              </div>
+            )}
+            {errors.category && <p className="text-sm text-red-500 mt-1">{errors.category}</p>}
           </div>
           
           <div>

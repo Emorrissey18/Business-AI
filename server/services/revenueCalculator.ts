@@ -7,8 +7,8 @@ export async function calculateRevenueProgress(goalId: number): Promise<number> 
     if (!goal) return 0;
 
     const financialRecords = await storage.getFinancialRecords();
-    const totalIncome = financialRecords
-      .filter(r => r.type === 'income')
+    const totalRevenue = financialRecords
+      .filter(r => r.type === 'revenue')
       .reduce((sum, r) => sum + r.amount, 0);
 
     // Parse target amounts from goal descriptions
@@ -16,7 +16,7 @@ export async function calculateRevenueProgress(goalId: number): Promise<number> 
     
     if (targetAmount <= 0) return goal.progress; // Return current progress if no target found
 
-    const progress = Math.min(100, Math.round((totalIncome / targetAmount) * 100));
+    const progress = Math.min(100, Math.round((totalRevenue / targetAmount) * 100));
     return progress;
   } catch (error) {
     console.error('Error calculating revenue progress:', error);
