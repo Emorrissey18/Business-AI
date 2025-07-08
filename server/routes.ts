@@ -55,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: req.file.size,
         content: null,
         summary: null,
-        insights: [] as string[],
+        insights: [],
         status: 'pending'
       });
 

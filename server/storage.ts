@@ -326,7 +326,7 @@ export class DatabaseStorage implements IStorage {
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const [document] = await db
       .insert(documents)
-      .values(insertDocument)
+      .values([insertDocument])
       .returning();
     return document;
   }
