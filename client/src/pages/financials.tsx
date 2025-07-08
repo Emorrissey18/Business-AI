@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import NewFinancialRecordModal from "@/components/modals/new-financial-record-modal";
 import EditFinancialRecordModal from "@/components/modals/edit-financial-record-modal";
+import Navigation from "@/components/navigation";
 
 const FINANCIAL_CATEGORIES = {
   income: ["Sales", "Services", "Consulting", "Investments", "Other Income"],
@@ -156,6 +157,7 @@ export default function Financials() {
 
   return (
     <div className="container mx-auto p-6">
+      <Navigation />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Financial Records</h1>
         <Button
