@@ -261,15 +261,16 @@ AVAILABLE ACTIONS:
           content: msg.content
         }))
       ],
-      tools,
-      tool_choice: "auto",
       max_tokens: 1000,
     });
+
+    console.log('OpenAI API Response:', JSON.stringify(response, null, 2));
 
     const choice = response.choices[0];
     const actions: any[] = [];
     
     if (choice.message.tool_calls) {
+      console.log('Tool calls detected:', choice.message.tool_calls);
       for (const toolCall of choice.message.tool_calls) {
         if (toolCall.type === "function") {
           const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
@@ -282,8 +283,11 @@ AVAILABLE ACTIONS:
       }
     }
 
+    const responseText = choice.message.content || "I apologize, but I couldn't generate a response. Please try again.";
+    console.log('AI Response:', responseText);
+
     return {
-      response: choice.message.content || "I apologize, but I couldn't generate a response. Please try again.",
+      response: responseText,
       actions
     };
   } catch (error) {
