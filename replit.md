@@ -151,3 +151,10 @@ Changelog:
   - Improved system prompts to ensure AI uses function calls for data modifications
   - Fixed response handling for tool calls to provide proper user feedback
   - AI now correctly identifies goals by title and updates the right goal progress
+- July 08, 2025. Resolved AI function calling consistency issues:
+  - Fixed critical bug where AI would calculate progress correctly but not call update functions
+  - Strengthened system prompts with explicit function calling requirements
+  - Added concrete examples of when to use functions (revenue changes, task completions)
+  - Eliminated misleading "updating now" language without actual function calls
+  - AI now consistently calls update_goal_progress and update_task_status functions
+  - Function calls work reliably for natural language requests about progress changes

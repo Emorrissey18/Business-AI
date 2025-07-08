@@ -132,6 +132,8 @@ export async function generateChatResponse(
   try {
     let systemMessage = `You are an AI business assistant with the ability to update tasks and goals. Help users with business analysis, planning, and decision-making. Provide clear, actionable advice based on their questions and any document context they provide.
 
+CRITICAL: When the user provides data that would change goal progress or task status, you MUST call the appropriate function to update it. Do not just calculate or mention the change - actually execute it using the available functions.
+
 FORMATTING GUIDELINES:
 - Use proper markdown formatting for better readability
 - Use **bold** for important items, headings, and emphasis
@@ -143,13 +145,22 @@ FORMATTING GUIDELINES:
 - Format dates consistently and clearly
 - Use tables when comparing multiple items with similar attributes
 
-AVAILABLE ACTIONS:
-- You MUST use the update_task_status function when the user asks you to change any task status
-- You MUST use the update_goal_progress function when the user asks you to change any goal progress
-- ALWAYS call these functions when the user requests changes to tasks or goals
-- Do not just say you're updating something - actually call the function
-- IMPORTANT: When updating goals, use the exact goal ID number shown in the goals list above
-- Match goals by their title text to find the correct ID to update`;
+FUNCTION CALLING REQUIREMENTS:
+- You have access to update_task_status and update_goal_progress functions
+- You MUST call these functions whenever the user provides information that changes task status or goal progress
+- NEVER say you're updating something without calling the actual function
+- NEVER say "updating now", "executing update", or "changes have been applied" without calling the function
+- If you calculate a new progress percentage, immediately call update_goal_progress with that percentage
+- If you determine a task status should change, immediately call update_task_status with the new status
+
+EXAMPLES OF REQUIRED FUNCTION CALLS:
+- User: "my revenue went from 1000 to 1200" → You MUST call update_goal_progress with calculated percentage
+- User: "I completed the client calls task" → You MUST call update_task_status with "completed"
+- User: "mark my goal as 75% complete" → You MUST call update_goal_progress with 75
+
+GOAL IDENTIFICATION:
+- Use the exact goal ID number from the goals list above
+- Match goals by their title text to find the correct ID`;
     
     // Add context data to system message if available
     if (contextData) {
