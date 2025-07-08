@@ -68,9 +68,17 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
     setErrors({});
 
     try {
+      const finalCategory = showCustomCategory ? customCategory : formData.category;
+      
+      // Validate custom category if needed
+      if (showCustomCategory && !customCategory.trim()) {
+        setErrors({ category: "Category is required" });
+        return;
+      }
+      
       const finalData = {
         ...formData,
-        category: showCustomCategory ? customCategory : formData.category,
+        category: finalCategory,
       };
       const validatedData = goalFormSchema.parse(finalData);
       createGoalMutation.mutate(validatedData);
@@ -201,7 +209,11 @@ export default function NewGoalModal({ isOpen, onClose }: NewGoalModalProps) {
                 </Button>
               </div>
             )}
-            {errors.category && <p className="text-sm text-red-500 mt-1">{errors.category}</p>}
+            {(errors.category || (showCustomCategory && !customCategory.trim())) && (
+              <p className="text-sm text-red-500 mt-1">
+                {errors.category || "Category is required"}
+              </p>
+            )}
           </div>
           
           <div>

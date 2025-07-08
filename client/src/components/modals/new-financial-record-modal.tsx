@@ -74,9 +74,17 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
   });
 
   const onSubmit = (data: NewFinancialRecordForm) => {
+    const finalCategory = showCustomCategory ? customCategory : data.category;
+    
+    // Validate custom category if needed
+    if (showCustomCategory && !customCategory.trim()) {
+      form.setError("category", { message: "Category is required" });
+      return;
+    }
+    
     const finalData = {
       ...data,
-      category: showCustomCategory ? customCategory : data.category,
+      category: finalCategory,
     };
     createRecordMutation.mutate(finalData);
   };
@@ -172,8 +180,10 @@ export default function NewFinancialRecordModal({ isOpen, onClose }: NewFinancia
                 </Button>
               </div>
             )}
-            {form.formState.errors.category && (
-              <p className="text-sm text-red-600">{form.formState.errors.category.message}</p>
+            {(form.formState.errors.category || (showCustomCategory && !customCategory.trim())) && (
+              <p className="text-sm text-red-600">
+                {form.formState.errors.category?.message || "Category is required"}
+              </p>
             )}
           </div>
 
