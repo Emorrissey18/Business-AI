@@ -477,11 +477,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Goal ID and progress are required' });
       }
       
-      if (progress < 0 || progress > 100) {
-        return res.status(400).json({ message: 'Progress must be between 0 and 100' });
+      if (progress < 0) {
+        return res.status(400).json({ message: 'Progress cannot be negative' });
       }
       
-      const goal = await storage.updateGoal(goalId, { progress });
+      // Cap progress at 100%
+      const cappedProgress = Math.min(progress, 100);
+      
+      const goal = await storage.updateGoal(goalId, { progress: cappedProgress });
       if (!goal) {
         return res.status(404).json({ message: 'Goal not found' });
       }

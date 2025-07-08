@@ -158,3 +158,9 @@ Changelog:
   - Eliminated misleading "updating now" language without actual function calls
   - AI now consistently calls update_goal_progress and update_task_status functions
   - Function calls work reliably for natural language requests about progress changes
+- July 08, 2025. Fixed goal progress capping and consistency issues:
+  - Resolved "two-try" function calling problem - AI now calls functions immediately in first response
+  - Implemented automatic progress capping at 100% on backend (/api/ai/update-goal-progress)
+  - Enhanced AI prompts to eliminate "updating now" delays without actual function calls
+  - Goal progress now correctly shows 100% maximum even when targets are exceeded
+  - Function calls now work consistently on first attempt for all progress updates

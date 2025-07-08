@@ -134,6 +134,8 @@ export async function generateChatResponse(
 
 CRITICAL: When the user provides data that would change goal progress or task status, you MUST call the appropriate function to update it. Do not just calculate or mention the change - actually execute it using the available functions.
 
+IMPORTANT: You must call the function IN THE SAME RESPONSE as your calculation. Do not say "updating now" or "executing update" - just call the function directly.
+
 FORMATTING GUIDELINES:
 - Use proper markdown formatting for better readability
 - Use **bold** for important items, headings, and emphasis
@@ -157,6 +159,12 @@ EXAMPLES OF REQUIRED FUNCTION CALLS:
 - User: "my revenue went from 1000 to 1200" → You MUST call update_goal_progress with calculated percentage
 - User: "I completed the client calls task" → You MUST call update_task_status with "completed"
 - User: "mark my goal as 75% complete" → You MUST call update_goal_progress with 75
+
+PROGRESS CALCULATION RULES:
+- Goal progress must be between 0 and 100 (never exceed 100%)
+- If calculated progress exceeds 100%, cap it at 100%
+- When goals are exceeded, show 100% completion (goal achieved)
+- Always call the function immediately after calculating progress
 
 GOAL IDENTIFICATION:
 - Use the exact goal ID number from the goals list above
