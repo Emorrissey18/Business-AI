@@ -144,10 +144,12 @@ FORMATTING GUIDELINES:
 - Use tables when comparing multiple items with similar attributes
 
 AVAILABLE ACTIONS:
-- You can update task statuses (pending, in_progress, completed) using the update_task_status function
-- You can update goal progress percentages (0-100) using the update_goal_progress function
-- Use these actions when the user asks you to make changes or when it would be helpful to do so
-- Always inform the user when you've made changes to their data`;
+- You MUST use the update_task_status function when the user asks you to change any task status
+- You MUST use the update_goal_progress function when the user asks you to change any goal progress
+- ALWAYS call these functions when the user requests changes to tasks or goals
+- Do not just say you're updating something - actually call the function
+- IMPORTANT: When updating goals, use the exact goal ID number shown in the goals list above
+- Match goals by their title text to find the correct ID to update`;
     
     // Add context data to system message if available
     if (contextData) {
@@ -166,7 +168,7 @@ AVAILABLE ACTIONS:
       if (contextData.goals?.length) {
         systemMessage += `\n\nGoals (${contextData.goals.length} total):\n`;
         contextData.goals.forEach((goal, index) => {
-          systemMessage += `${index + 1}. ${goal.title} - ${goal.status} (Target: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'})`;
+          systemMessage += `${index + 1}. ID: ${goal.id} - "${goal.title}" - ${goal.status} (Progress: ${goal.progress}%, Target: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'})`;
           if (goal.description) systemMessage += ` - ${goal.description}`;
           systemMessage += "\n";
         });
@@ -262,6 +264,8 @@ AVAILABLE ACTIONS:
         }))
       ],
       max_tokens: 1000,
+      tools: tools,
+      tool_choice: "auto"
     });
 
     console.log('OpenAI API Response:', JSON.stringify(response, null, 2));
@@ -283,7 +287,24 @@ AVAILABLE ACTIONS:
       }
     }
 
-    const responseText = choice.message.content || "I apologize, but I couldn't generate a response. Please try again.";
+    let responseText = choice.message.content || "";
+    
+    // If there were tool calls but no text response, generate a helpful message
+    if (actions.length > 0 && !responseText.trim()) {
+      const actionDescriptions = actions.map(action => {
+        if (action.type === 'update_goal_progress') {
+          return `Updated goal progress to ${action.parameters.progress}%`;
+        } else if (action.type === 'update_task_status') {
+          return `Updated task status to ${action.parameters.status}`;
+        }
+        return 'Completed action';
+      });
+      
+      responseText = `I've successfully completed the following actions:\n\n${actionDescriptions.map(desc => `✓ ${desc}`).join('\n')}\n\nThe changes have been applied to your data. Is there anything else you'd like me to help you with?`;
+    } else if (!responseText.trim()) {
+      responseText = "I apologize, but I couldn't generate a response. Please try again.";
+    }
+    
     console.log('AI Response:', responseText);
 
     return {

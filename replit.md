@@ -145,3 +145,9 @@ Changelog:
   - Corrected CSS class references for proper styling
   - Stabilized workflow execution and server startup process
   - App now consistently loads with full functionality
+- July 08, 2025. Fixed AI goal update functionality:
+  - Corrected OpenAI function calling implementation with proper tools parameter
+  - Enhanced goal identification by including goal IDs in AI context data
+  - Improved system prompts to ensure AI uses function calls for data modifications
+  - Fixed response handling for tool calls to provide proper user feedback
+  - AI now correctly identifies goals by title and updates the right goal progress
