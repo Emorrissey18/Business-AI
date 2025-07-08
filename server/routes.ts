@@ -257,12 +257,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Fetch context data for AI
-          const [tasks, goals, documents, insights, calendarEvents] = await Promise.all([
+          const [tasks, goals, documents, insights, calendarEvents, financialRecords] = await Promise.all([
             storage.getTasks(),
             storage.getGoals(),
             storage.getDocuments(),
             storage.getAiInsights(),
-            storage.getCalendarEvents()
+            storage.getCalendarEvents(),
+            storage.getFinancialRecords()
           ]);
           
           const contextData = {
@@ -270,8 +271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             goals,
             documents,
             insights,
-            calendarEvents
+            calendarEvents,
+            financialRecords
           };
+          
+          // Debug: log financial records data
+          console.log('Financial records in context:', financialRecords?.length || 0);
           
           // Generate AI response with context
           const aiResult = await generateChatResponse(chatHistory, contextData);

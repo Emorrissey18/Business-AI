@@ -127,6 +127,7 @@ export async function generateChatResponse(
     documents?: Array<any>;
     insights?: Array<any>;
     calendarEvents?: Array<any>;
+    financialRecords?: Array<any>;
   }
 ): Promise<{ response: string; actions?: any[] }> {
   try {
@@ -219,7 +220,37 @@ GOAL IDENTIFICATION:
         });
       }
       
-      systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, or calendar events when appropriate.";
+      if (contextData.financialRecords?.length) {
+        systemMessage += `\n\nFinancial Records (${contextData.financialRecords.length} total):\n`;
+        
+        // Calculate totals for context
+        const revenueRecords = contextData.financialRecords.filter(record => record.type === 'revenue');
+        const expenseRecords = contextData.financialRecords.filter(record => record.type === 'expense');
+        const otherRecords = contextData.financialRecords.filter(record => record.type === 'other');
+        
+        const totalRevenue = revenueRecords.reduce((sum, record) => sum + record.amount, 0);
+        const totalExpenses = expenseRecords.reduce((sum, record) => sum + record.amount, 0);
+        const totalOther = otherRecords.reduce((sum, record) => sum + record.amount, 0);
+        const netProfit = totalRevenue - totalExpenses;
+        
+        systemMessage += `\nFinancial Summary:\n`;
+        systemMessage += `- Total Revenue: $${totalRevenue.toLocaleString()}\n`;
+        systemMessage += `- Total Expenses: $${totalExpenses.toLocaleString()}\n`;
+        systemMessage += `- Other (Investments/Funding): $${totalOther.toLocaleString()}\n`;
+        systemMessage += `- Net Profit: $${netProfit.toLocaleString()}\n`;
+        
+        systemMessage += `\nRecent Financial Records:\n`;
+        contextData.financialRecords
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 10)
+          .forEach((record, index) => {
+            systemMessage += `${index + 1}. ${record.type.toUpperCase()} - ${record.category} - $${record.amount.toLocaleString()} (${new Date(record.date).toLocaleDateString()})`;
+            if (record.description) systemMessage += ` - ${record.description}`;
+            systemMessage += "\n";
+          });
+      }
+      
+      systemMessage += "\n\nUse this context to provide more relevant and helpful responses. Reference specific tasks, goals, documents, calendar events, or financial data when appropriate. When discussing revenue growth or financial performance, use the actual financial records data provided above.";
     }
     
     const tools = [

@@ -218,3 +218,9 @@ Changelog:
   - Reverted to original context building system to restore AI functionality
   - System now works with original bulk data loading approach
   - Future context filtering improvements need proper module structure
+- July 08, 2025. Fixed AI financial data access:
+  - Added financial records to AI context data in routes.ts
+  - Enhanced AI system message with financial summary calculations
+  - AI now has access to total revenue, expenses, net profit, and recent financial records
+  - Financial data is automatically calculated and included in every AI response context
+  - AI can now answer revenue growth questions using actual financial data
