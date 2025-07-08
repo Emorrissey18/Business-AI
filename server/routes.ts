@@ -302,7 +302,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks', async (req: Request, res: Response) => {
     try {
       const validatedData = insertTaskSchema.parse(req.body);
-      const task = await storage.createTask(validatedData);
+      // Convert dueDate string to Date object if provided
+      const taskData = {
+        ...validatedData,
+        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null
+      };
+      const task = await storage.createTask(taskData);
       res.json(task);
     } catch (error) {
       console.error('Error creating task:', error);

@@ -131,6 +131,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  dueDate: z.union([z.string(), z.null()]).optional(),
 });
 
 export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({

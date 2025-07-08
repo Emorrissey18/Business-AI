@@ -58,7 +58,7 @@ export default function NewTaskModal({ isOpen, onClose }: NewTaskModalProps) {
     mutationFn: async (data: FormData) => {
       const taskData = {
         ...data,
-        dueDate: date || null,
+        dueDate: date ? date.toISOString() : null,
       };
       const response = await apiRequest('POST', '/api/tasks', taskData);
       return response.json();
