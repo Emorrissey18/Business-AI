@@ -255,3 +255,8 @@ Changelog:
   - Added "Customize Tabs" mode with grip icons and visual feedback during drag operations
   - Users can now personalize their navigation tab order which persists across browser sessions
   - Added "Reset Order" option to restore default tab arrangement
+- July 09, 2025. Updated AI Model to GPT-4o Mini:
+  - Changed all OpenAI API calls from GPT-4o to GPT-4o-mini for cost efficiency
+  - Updated server/services/openai.ts, financialAnalyzer.ts, and correlationEngine.ts
+  - Provides 94% cost reduction while maintaining core AI functionality
+  - May have slightly reduced performance for complex business analysis but maintains all features

@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { storage } from "../storage.js";
 import { FinancialRecord, Goal, Task } from "../../shared/schema.js";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+// Updated to use "gpt-4o-mini" as requested by user for cost efficiency
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface DataCorrelation {
@@ -109,7 +109,7 @@ Respond with a JSON object in this exact format:
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -211,7 +211,7 @@ Provide analysis in JSON format:
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
