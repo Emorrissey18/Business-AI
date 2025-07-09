@@ -128,6 +128,7 @@ export async function generateChatResponse(
     insights?: Array<any>;
     calendarEvents?: Array<any>;
     financialRecords?: Array<any>;
+    businessContexts?: Array<any>;
   }
 ): Promise<{ response: string; actions?: any[] }> {
   try {
@@ -282,6 +283,30 @@ GOAL IDENTIFICATION:
       systemMessage += "8. For percentages use: 'Growth Rate = (399,300 ÷ 700) × 100 = 57,043%'\n";
       systemMessage += "9. Use bullet points, simple formatting, and readable math expressions\n";
       systemMessage += "Always cross-reference goals with financial data to provide complete answers.";
+    }
+
+    if (contextData?.businessContexts?.length) {
+      systemMessage += `\n\nBusiness Context (Critical Business Information):\n`;
+      systemMessage += `IMPORTANT: Use this business context to make informed recommendations and decisions. This is long-term business information that should always be considered.\n\n`;
+      
+      const contextBySection: Record<string, any[]> = {};
+      contextData.businessContexts.forEach(context => {
+        if (!contextBySection[context.section]) {
+          contextBySection[context.section] = [];
+        }
+        contextBySection[context.section].push(context);
+      });
+
+      Object.entries(contextBySection).forEach(([section, contexts]) => {
+        const sectionTitle = section.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        systemMessage += `**${sectionTitle}:**\n`;
+        contexts.forEach((context, index) => {
+          systemMessage += `${index + 1}. ${context.title} (${context.priority} priority)\n   ${context.content}\n`;
+        });
+        systemMessage += `\n`;
+      });
+      
+      systemMessage += `\nWhen providing business advice, recommendations, or making decisions, ALWAYS consider this business context. Reference relevant context items in your responses and tailor your advice to the specific business situation.\n`;
     }
     
     const tools = [

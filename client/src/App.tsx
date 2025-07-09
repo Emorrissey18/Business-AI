@@ -11,6 +11,7 @@ import Tasks from "@/pages/tasks";
 import Calendar from "@/pages/calendar";
 import Financials from "@/pages/financials";
 import Insights from "@/pages/insights";
+import BusinessContext from "@/pages/business-context";
 import Header from "@/components/header";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/calendar" component={Calendar} />
       <Route path="/financials" component={Financials} />
       <Route path="/insights" component={Insights} />
+      <Route path="/business-context" component={BusinessContext} />
       <Route component={NotFound} />
     </Switch>
   );

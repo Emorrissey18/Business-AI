@@ -95,6 +95,17 @@ export const financialRecords = pgTable("financial_records", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const businessContext = pgTable("business_context", {
+  id: serial("id").primaryKey(),
+  section: text("section").notNull(), // business_structure, main_goals, problems, risks, opportunities, strengths, weaknesses, other
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  priority: text("priority").notNull().default("medium"), // high, medium, low
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
@@ -158,6 +169,15 @@ export const insertFinancialRecordSchema = z.object({
   date: z.string().min(1, "Date is required"),
 });
 
+export const insertBusinessContextSchema = createInsertSchema(businessContext).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  section: z.enum(["business_structure", "main_goals", "problems", "risks", "opportunities", "strengths", "weaknesses", "other"]),
+  priority: z.enum(["high", "medium", "low"]).default("medium"),
+});
+
 // Types
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
@@ -177,3 +197,5 @@ export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertFinancialRecord = z.infer<typeof insertFinancialRecordSchema>;
 export type FinancialRecord = typeof financialRecords.$inferSelect;
+export type InsertBusinessContext = z.infer<typeof insertBusinessContextSchema>;
+export type BusinessContext = typeof businessContext.$inferSelect;

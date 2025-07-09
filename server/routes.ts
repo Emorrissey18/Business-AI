@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema } from "@shared/schema";
+import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema, insertBusinessContextSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
 import { analyzeDataCorrelations, executeCorrelationActions, generateBusinessInsights } from "./services/correlationEngine";
@@ -257,13 +257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Fetch context data for AI
-          const [tasks, goals, documents, insights, calendarEvents, financialRecords] = await Promise.all([
+          const [tasks, goals, documents, insights, calendarEvents, financialRecords, businessContexts] = await Promise.all([
             storage.getTasks(),
             storage.getGoals(),
             storage.getDocuments(),
             storage.getAiInsights(),
             storage.getCalendarEvents(),
-            storage.getFinancialRecords()
+            storage.getFinancialRecords(),
+            storage.getBusinessContexts()
           ]);
           
           const contextData = {
@@ -272,7 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             documents,
             insights,
             calendarEvents,
-            financialRecords
+            financialRecords,
+            businessContexts
           };
           
           // Debug: log financial records data
@@ -612,6 +614,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating goal progress:', error);
       res.status(500).json({ message: 'Failed to update goal progress' });
+    }
+  });
+
+  // Business Context routes
+  app.get('/api/business-context', async (req: Request, res: Response) => {
+    try {
+      const contexts = await storage.getBusinessContexts();
+      res.json(contexts);
+    } catch (error) {
+      console.error('Error fetching business contexts:', error);
+      res.status(500).json({ message: 'Failed to fetch business contexts' });
+    }
+  });
+
+  app.get('/api/business-context/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const context = await storage.getBusinessContext(id);
+      if (!context) {
+        res.status(404).json({ message: 'Business context not found' });
+      } else {
+        res.json(context);
+      }
+    } catch (error) {
+      console.error('Error fetching business context:', error);
+      res.status(500).json({ message: 'Failed to fetch business context' });
+    }
+  });
+
+  app.get('/api/business-context/section/:section', async (req: Request, res: Response) => {
+    try {
+      const section = req.params.section;
+      const contexts = await storage.getBusinessContextsBySection(section);
+      res.json(contexts);
+    } catch (error) {
+      console.error('Error fetching business contexts by section:', error);
+      res.status(500).json({ message: 'Failed to fetch business contexts by section' });
+    }
+  });
+
+  app.post('/api/business-context', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertBusinessContextSchema.parse(req.body);
+      const context = await storage.createBusinessContext(validatedData);
+      res.status(201).json(context);
+    } catch (error) {
+      console.error('Error creating business context:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid input', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create business context' });
+      }
+    }
+  });
+
+  app.patch('/api/business-context/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const context = await storage.updateBusinessContext(id, req.body);
+      if (!context) {
+        res.status(404).json({ message: 'Business context not found' });
+      } else {
+        res.json(context);
+      }
+    } catch (error) {
+      console.error('Error updating business context:', error);
+      res.status(500).json({ message: 'Failed to update business context' });
+    }
+  });
+
+  app.delete('/api/business-context/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteBusinessContext(id);
+      if (!success) {
+        res.status(404).json({ message: 'Business context not found' });
+      } else {
+        res.status(204).send();
+      }
+    } catch (error) {
+      console.error('Error deleting business context:', error);
+      res.status(500).json({ message: 'Failed to delete business context' });
     }
   });
 

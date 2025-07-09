@@ -1,9 +1,10 @@
 import { 
-  users, documents, goals, aiInsights, conversations, messages, tasks, calendarEvents, financialRecords,
+  users, documents, goals, aiInsights, conversations, messages, tasks, calendarEvents, financialRecords, businessContext,
   type User, type InsertUser, type Document, type InsertDocument, type Goal, type InsertGoal, 
   type AiInsight, type InsertAiInsight, type Conversation, type InsertConversation, 
   type Message, type InsertMessage, type Task, type InsertTask, type CalendarEvent, 
-  type InsertCalendarEvent, type FinancialRecord, type InsertFinancialRecord 
+  type InsertCalendarEvent, type FinancialRecord, type InsertFinancialRecord,
+  type BusinessContext, type InsertBusinessContext
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -69,6 +70,14 @@ export interface IStorage {
   createFinancialRecord(record: InsertFinancialRecord): Promise<FinancialRecord>;
   updateFinancialRecord(id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined>;
   deleteFinancialRecord(id: number): Promise<boolean>;
+  
+  // Business Context
+  getBusinessContext(id: number): Promise<BusinessContext | undefined>;
+  getBusinessContexts(): Promise<BusinessContext[]>;
+  getBusinessContextsBySection(section: string): Promise<BusinessContext[]>;
+  createBusinessContext(context: InsertBusinessContext): Promise<BusinessContext>;
+  updateBusinessContext(id: number, updates: Partial<BusinessContext>): Promise<BusinessContext | undefined>;
+  deleteBusinessContext(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -732,6 +741,70 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error deleting financial record:', error);
+      return false;
+    }
+  }
+
+  // Business Context methods
+  async getBusinessContext(id: number): Promise<BusinessContext | undefined> {
+    try {
+      const [context] = await db.select().from(businessContext).where(eq(businessContext.id, id));
+      return context || undefined;
+    } catch (error) {
+      console.error('Error fetching business context:', error);
+      return undefined;
+    }
+  }
+
+  async getBusinessContexts(): Promise<BusinessContext[]> {
+    try {
+      return await db.select().from(businessContext).orderBy(desc(businessContext.createdAt));
+    } catch (error) {
+      console.error('Error fetching business contexts:', error);
+      return [];
+    }
+  }
+
+  async getBusinessContextsBySection(section: string): Promise<BusinessContext[]> {
+    try {
+      return await db.select().from(businessContext)
+        .where(eq(businessContext.section, section))
+        .orderBy(desc(businessContext.createdAt));
+    } catch (error) {
+      console.error('Error fetching business contexts by section:', error);
+      return [];
+    }
+  }
+
+  async createBusinessContext(insertContext: InsertBusinessContext): Promise<BusinessContext> {
+    try {
+      const [context] = await db.insert(businessContext).values(insertContext).returning();
+      return context;
+    } catch (error) {
+      console.error('Error creating business context:', error);
+      throw error;
+    }
+  }
+
+  async updateBusinessContext(id: number, updates: Partial<BusinessContext>): Promise<BusinessContext | undefined> {
+    try {
+      const [context] = await db.update(businessContext)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(businessContext.id, id))
+        .returning();
+      return context || undefined;
+    } catch (error) {
+      console.error('Error updating business context:', error);
+      return undefined;
+    }
+  }
+
+  async deleteBusinessContext(id: number): Promise<boolean> {
+    try {
+      await db.delete(businessContext).where(eq(businessContext.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting business context:', error);
       return false;
     }
   }

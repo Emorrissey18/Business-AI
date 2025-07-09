@@ -13,6 +13,7 @@ const navigationItems: NavigationItem[] = [
   { href: "/tasks", label: "Tasks" },
   { href: "/calendar", label: "Calendar" },
   { href: "/financials", label: "Financials" },
+  { href: "/business-context", label: "Business Context" },
   { href: "/insights", label: "AI Insights" },
 ];
 
