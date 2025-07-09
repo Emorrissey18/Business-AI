@@ -11,14 +11,24 @@ export default function Landing() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignup, setIsSignup] = useState(false);
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast({
         title: "Error",
         description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isSignup && !name) {
+      toast({
+        title: "Error",
+        description: "Please enter your full name for signup",
         variant: "destructive",
       });
       return;
@@ -44,13 +54,13 @@ export default function Landing() {
         // Reload the page to trigger auth check
         window.location.reload();
       } else {
-        throw new Error(data.message || "Login failed");
+        throw new Error(data.message || "Authentication failed");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Auth error:", error);
       toast({
-        title: "Login Failed",
-        description: "Unable to sign in. Please try again.",
+        title: isSignup ? "Signup Failed" : "Login Failed",
+        description: "Unable to authenticate. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -142,15 +152,20 @@ export default function Landing() {
         <div className="text-center">
           <Card className="max-w-2xl mx-auto">
             <CardHeader>
-              <CardTitle className="text-2xl">Ready to Transform Your Business?</CardTitle>
+              <CardTitle className="text-2xl">
+                {isSignup ? "Create Your Account" : "Welcome Back"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600 dark:text-gray-300">
-                Join thousands of businesses using AI to streamline operations and make data-driven decisions.
+                {isSignup 
+                  ? "Join thousands of businesses using AI to streamline operations and make data-driven decisions."
+                  : "Sign in to your AI Business Assistant account to continue."
+                }
               </p>
               
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <Input
@@ -162,22 +177,44 @@ export default function Landing() {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name (Optional)</Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
+                  {isSignup && (
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required={isSignup}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing In..." : "Sign In / Sign Up"}
+                  {isLoading 
+                    ? (isSignup ? "Creating Account..." : "Signing In...") 
+                    : (isSignup ? "Create Account" : "Sign In")
+                  }
                 </Button>
               </form>
+              
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignup(!isSignup);
+                    setName("");
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                >
+                  {isSignup 
+                    ? "Already have an account? Sign in" 
+                    : "Don't have an account? Sign up"
+                  }
+                </button>
+              </div>
               
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Free to get started • No credit card required • Your data is private and secure
