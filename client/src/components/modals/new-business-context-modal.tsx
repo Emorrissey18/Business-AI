@@ -49,7 +49,7 @@ export function NewBusinessContextModal() {
 
   const createMutation = useMutation({
     mutationFn: (data: InsertBusinessContext) =>
-      apiRequest("/api/business-context", "POST", data),
+      apiRequest("POST", "/api/business-context", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-context"] });
       toast({
