@@ -43,7 +43,7 @@ function BusinessContextCard({ context }: { context: BusinessContext }) {
   const sectionColor = SECTION_COLORS[context.section as keyof typeof SECTION_COLORS] || "bg-gray-500";
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/business-context/${context.id}`, { method: "DELETE" }),
+    mutationFn: () => apiRequest("DELETE", `/api/business-context/${context.id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-context"] });
       toast({
