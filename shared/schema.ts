@@ -1,15 +1,33 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, boolean, timestamp, json, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User table for Replit Auth
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  id: varchar("id").primaryKey().notNull(), // Replit user ID (string)
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  tabOrder: json("tab_order").$type<string[]>().default([]), // Custom tab ordering per user
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),
   mimeType: text("mime_type").notNull(),
@@ -24,6 +42,7 @@ export const documents = pgTable("documents", {
 
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   type: text("type").notNull(), // revenue, expense, other
@@ -38,6 +57,7 @@ export const goals = pgTable("goals", {
 
 export const aiInsights = pgTable("ai_insights", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   documentId: integer("document_id").references(() => documents.id),
   type: text("type").notNull(), // opportunity, warning, suggestion
   title: text("title").notNull(),
@@ -48,6 +68,7 @@ export const aiInsights = pgTable("ai_insights", {
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -55,6 +76,7 @@ export const conversations = pgTable("conversations", {
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   conversationId: integer("conversation_id").references(() => conversations.id),
   role: text("role").notNull(), // user, assistant
   content: text("content").notNull(),
@@ -64,6 +86,7 @@ export const messages = pgTable("messages", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   priority: text("priority").notNull().default("medium"), // low, medium, high
@@ -75,6 +98,7 @@ export const tasks = pgTable("tasks", {
 
 export const calendarEvents = pgTable("calendar_events", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   startDate: timestamp("start_date").notNull(),
@@ -87,6 +111,7 @@ export const calendarEvents = pgTable("calendar_events", {
 
 export const financialRecords = pgTable("financial_records", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   type: text("type").notNull(), // revenue, expense, other
   category: text("category").notNull(),
   amount: integer("amount").notNull(), // in cents
@@ -98,6 +123,7 @@ export const financialRecords = pgTable("financial_records", {
 
 export const businessContext = pgTable("business_context", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
   section: text("section").notNull(), // business_structure, main_goals, problems, risks, opportunities, strengths, weaknesses, other
   title: text("title").notNull(),
   content: text("content").notNull(),
@@ -130,9 +156,10 @@ export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
   createdAt: true,
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const upsertUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+  updatedAt: true,
+  tabOrder: true,
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
@@ -187,7 +214,7 @@ export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type Goal = typeof goals.$inferSelect;
 export type InsertAiInsight = z.infer<typeof insertAiInsightSchema>;
 export type AiInsight = typeof aiInsights.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;

@@ -1,6 +1,6 @@
 import { 
   users, documents, goals, aiInsights, conversations, messages, tasks, calendarEvents, financialRecords, businessContext,
-  type User, type InsertUser, type Document, type InsertDocument, type Goal, type InsertGoal, 
+  type User, type UpsertUser, type Document, type InsertDocument, type Goal, type InsertGoal, 
   type AiInsight, type InsertAiInsight, type Conversation, type InsertConversation, 
   type Message, type InsertMessage, type Task, type InsertTask, type CalendarEvent, 
   type InsertCalendarEvent, type FinancialRecord, type InsertFinancialRecord,
@@ -10,74 +10,73 @@ import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Users
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Users - for Replit Auth
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
-  // Documents
-  getDocument(id: number): Promise<Document | undefined>;
-  getDocuments(): Promise<Document[]>;
-  createDocument(document: InsertDocument): Promise<Document>;
-  updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
-  deleteDocument(id: number): Promise<boolean>;
+  // Documents (user-specific)
+  getDocument(userId: string, id: number): Promise<Document | undefined>;
+  getDocuments(userId: string): Promise<Document[]>;
+  createDocument(userId: string, document: InsertDocument): Promise<Document>;
+  updateDocument(userId: string, id: number, updates: Partial<Document>): Promise<Document | undefined>;
+  deleteDocument(userId: string, id: number): Promise<boolean>;
   
-  // Goals
-  getGoal(id: number): Promise<Goal | undefined>;
-  getGoals(): Promise<Goal[]>;
-  createGoal(goal: any): Promise<Goal>;
-  updateGoal(id: number, updates: Partial<Goal>): Promise<Goal | undefined>;
-  deleteGoal(id: number): Promise<boolean>;
+  // Goals (user-specific)
+  getGoal(userId: string, id: number): Promise<Goal | undefined>;
+  getGoals(userId: string): Promise<Goal[]>;
+  createGoal(userId: string, goal: any): Promise<Goal>;
+  updateGoal(userId: string, id: number, updates: Partial<Goal>): Promise<Goal | undefined>;
+  deleteGoal(userId: string, id: number): Promise<boolean>;
   
-  // AI Insights
-  getAiInsight(id: number): Promise<AiInsight | undefined>;
-  getAiInsights(): Promise<AiInsight[]>;
-  getAiInsightsByDocument(documentId: number): Promise<AiInsight[]>;
-  createAiInsight(insight: InsertAiInsight): Promise<AiInsight>;
-  deleteAiInsight(id: number): Promise<boolean>;
+  // AI Insights (user-specific)
+  getAiInsight(userId: string, id: number): Promise<AiInsight | undefined>;
+  getAiInsights(userId: string): Promise<AiInsight[]>;
+  getAiInsightsByDocument(userId: string, documentId: number): Promise<AiInsight[]>;
+  createAiInsight(userId: string, insight: InsertAiInsight): Promise<AiInsight>;
+  deleteAiInsight(userId: string, id: number): Promise<boolean>;
   
-  // Conversations
-  getConversation(id: number): Promise<Conversation | undefined>;
-  getConversations(): Promise<Conversation[]>;
-  createConversation(conversation: InsertConversation): Promise<Conversation>;
-  updateConversation(id: number, updates: Partial<Conversation>): Promise<Conversation | undefined>;
-  deleteConversation(id: number): Promise<boolean>;
+  // Conversations (user-specific)
+  getConversation(userId: string, id: number): Promise<Conversation | undefined>;
+  getConversations(userId: string): Promise<Conversation[]>;
+  createConversation(userId: string, conversation: InsertConversation): Promise<Conversation>;
+  updateConversation(userId: string, id: number, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(userId: string, id: number): Promise<boolean>;
   
-  // Messages
-  getMessage(id: number): Promise<Message | undefined>;
-  getMessages(): Promise<Message[]>;
-  getMessagesByConversation(conversationId: number): Promise<Message[]>;
-  createMessage(message: InsertMessage): Promise<Message>;
-  deleteMessage(id: number): Promise<boolean>;
+  // Messages (user-specific)
+  getMessage(userId: string, id: number): Promise<Message | undefined>;
+  getMessages(userId: string): Promise<Message[]>;
+  getMessagesByConversation(userId: string, conversationId: number): Promise<Message[]>;
+  createMessage(userId: string, message: InsertMessage): Promise<Message>;
+  deleteMessage(userId: string, id: number): Promise<boolean>;
   
-  // Tasks
-  getTask(id: number): Promise<Task | undefined>;
-  getTasks(): Promise<Task[]>;
-  createTask(task: any): Promise<Task>;
-  updateTask(id: number, updates: Partial<Task>): Promise<Task | undefined>;
-  deleteTask(id: number): Promise<boolean>;
+  // Tasks (user-specific)
+  getTask(userId: string, id: number): Promise<Task | undefined>;
+  getTasks(userId: string): Promise<Task[]>;
+  createTask(userId: string, task: any): Promise<Task>;
+  updateTask(userId: string, id: number, updates: Partial<Task>): Promise<Task | undefined>;
+  deleteTask(userId: string, id: number): Promise<boolean>;
   
-  // Calendar Events
-  getCalendarEvent(id: number): Promise<CalendarEvent | undefined>;
-  getCalendarEvents(): Promise<CalendarEvent[]>;
-  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
-  updateCalendarEvent(id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
-  deleteCalendarEvent(id: number): Promise<boolean>;
+  // Calendar Events (user-specific)
+  getCalendarEvent(userId: string, id: number): Promise<CalendarEvent | undefined>;
+  getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
+  createCalendarEvent(userId: string, event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(userId: string, id: number, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
+  deleteCalendarEvent(userId: string, id: number): Promise<boolean>;
   
-  // Financial Records
-  getFinancialRecord(id: number): Promise<FinancialRecord | undefined>;
-  getFinancialRecords(): Promise<FinancialRecord[]>;
-  createFinancialRecord(record: InsertFinancialRecord): Promise<FinancialRecord>;
-  updateFinancialRecord(id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined>;
-  deleteFinancialRecord(id: number): Promise<boolean>;
+  // Financial Records (user-specific)
+  getFinancialRecord(userId: string, id: number): Promise<FinancialRecord | undefined>;
+  getFinancialRecords(userId: string): Promise<FinancialRecord[]>;
+  createFinancialRecord(userId: string, record: InsertFinancialRecord): Promise<FinancialRecord>;
+  updateFinancialRecord(userId: string, id: number, updates: Partial<FinancialRecord>): Promise<FinancialRecord | undefined>;
+  deleteFinancialRecord(userId: string, id: number): Promise<boolean>;
   
-  // Business Context
-  getBusinessContext(id: number): Promise<BusinessContext | undefined>;
-  getBusinessContexts(): Promise<BusinessContext[]>;
-  getBusinessContextsBySection(section: string): Promise<BusinessContext[]>;
-  createBusinessContext(context: InsertBusinessContext): Promise<BusinessContext>;
-  updateBusinessContext(id: number, updates: Partial<BusinessContext>): Promise<BusinessContext | undefined>;
-  deleteBusinessContext(id: number): Promise<boolean>;
+  // Business Context (user-specific)
+  getBusinessContext(userId: string, id: number): Promise<BusinessContext | undefined>;
+  getBusinessContexts(userId: string): Promise<BusinessContext[]>;
+  getBusinessContextsBySection(userId: string, section: string): Promise<BusinessContext[]>;
+  createBusinessContext(userId: string, context: InsertBusinessContext): Promise<BusinessContext>;
+  updateBusinessContext(userId: string, id: number, updates: Partial<BusinessContext>): Promise<BusinessContext | undefined>;
+  deleteBusinessContext(userId: string, id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
