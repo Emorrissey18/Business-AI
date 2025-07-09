@@ -18,6 +18,11 @@ export function setupSimpleAuth(app: Express) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
+      // Check if user has password (for migration compatibility)
+      if (!user.password) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
       // Check password
       const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
       if (!isValidPassword) {
@@ -97,6 +102,24 @@ export function setupSimpleAuth(app: Express) {
       }
       res.json({ success: true });
     });
+  });
+
+  // Debug route for checking users (temporary)
+  app.get('/api/debug/users', async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const safeUsers = users.map(u => ({
+        id: u.id,
+        email: u.email,
+        hasPassword: !!u.password,
+        firstName: u.firstName,
+        lastName: u.lastName
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Debug users error:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
   });
 }
 
