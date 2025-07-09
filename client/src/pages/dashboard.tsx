@@ -82,14 +82,24 @@ export default function Dashboard() {
     },
   });
 
-  // Filter conversations based on search query
+  // Filter and sort conversations based on search query
   const filteredConversations = useMemo(() => {
-    if (!conversations || !searchQuery.trim()) return conversations || [];
+    if (!conversations) return [];
     
-    const query = searchQuery.toLowerCase().trim();
-    return conversations.filter(conversation => 
-      conversation.title.toLowerCase().includes(query)
-    );
+    let result = [...conversations];
+    
+    // Sort by newest first (most recent updatedAt)
+    result.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    
+    // Apply search filter if query exists
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(conversation => 
+        conversation.title.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
   }, [conversations, searchQuery]);
 
   const handleNewConversation = () => {
