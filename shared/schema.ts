@@ -136,6 +136,7 @@ export const businessContext = pgTable("business_context", {
 // Insert schemas
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
+  userId: true,
   uploadedAt: true,
   processedAt: true,
   insights: true,
@@ -143,6 +144,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 
 export const insertGoalSchema = createInsertSchema(goals).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -153,6 +155,7 @@ export const insertGoalSchema = createInsertSchema(goals).omit({
 
 export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
   id: true,
+  userId: true,
   createdAt: true,
 });
 
@@ -164,17 +167,20 @@ export const upsertUserSchema = createInsertSchema(users).omit({
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
+  userId: true,
   createdAt: true,
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -200,6 +206,7 @@ export const insertFinancialRecordSchema = z.object({
 
 export const insertBusinessContextSchema = createInsertSchema(businessContext).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
