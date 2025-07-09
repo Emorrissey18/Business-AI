@@ -9,26 +9,39 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const { toast } = useToast();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    
+    // Basic validation
+    if (!email || !password) {
       toast({
         title: "Error",
-        description: "Please enter your email address",
+        description: "Please enter both email and password",
         variant: "destructive",
       });
       return;
     }
 
-    if (isSignup && !name) {
+    if (isSignup && (!firstName || !lastName)) {
       toast({
         title: "Error",
-        description: "Please enter your full name for signup",
+        description: "Please enter your first and last name for signup",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
         variant: "destructive",
       });
       return;
@@ -36,21 +49,22 @@ export default function Landing() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/login", {
+      const endpoint = isSignup ? "/api/signup" : "/api/login";
+      const payload = isSignup 
+        ? { email, password, firstName, lastName }
+        : { email, password };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      
-      if (data.success) {
+
+      if (response.ok && data.success) {
         // Reload the page to trigger auth check
         window.location.reload();
       } else {
@@ -60,7 +74,7 @@ export default function Landing() {
       console.error("Auth error:", error);
       toast({
         title: isSignup ? "Signup Failed" : "Login Failed",
-        description: "Unable to authenticate. Please try again.",
+        description: error.message || "Unable to authenticate. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -177,18 +191,45 @@ export default function Landing() {
                       required
                     />
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  
                   {isSignup && (
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        placeholder="John Doe"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required={isSignup}
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input
+                          id="firstName"
+                          type="text"
+                          placeholder="John"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required={isSignup}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          type="text"
+                          placeholder="Doe"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          required={isSignup}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
                 
@@ -205,7 +246,9 @@ export default function Landing() {
                   type="button"
                   onClick={() => {
                     setIsSignup(!isSignup);
-                    setName("");
+                    setFirstName("");
+                    setLastName("");
+                    setPassword("");
                   }}
                   className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
                 >

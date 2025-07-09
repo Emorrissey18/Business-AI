@@ -263,6 +263,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/conversations/:id', authMiddleware, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const conversation = await storage.updateConversation(userId, conversationId, updates);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
+      
+      res.json(conversation);
+    } catch (error) {
+      console.error('Error updating conversation:', error);
+      res.status(500).json({ message: 'Failed to update conversation' });
+    }
+  });
+
+  app.delete('/api/conversations/:id', authMiddleware, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = parseInt(req.params.id);
+      
+      const deleted = await storage.deleteConversation(userId, conversationId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      res.status(500).json({ message: 'Failed to delete conversation' });
+    }
+  });
+
   // Messages routes
   app.get('/api/messages/:conversationId', authMiddleware, async (req: any, res: Response) => {
     try {

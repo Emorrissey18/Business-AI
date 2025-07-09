@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,14 +12,69 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import ChatInterface from "@/components/chat-interface";
 import Navigation from "@/components/navigation";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingConversation, setEditingConversation] = useState<{ id: number; title: string } | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ['/api/conversations'],
+  });
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      await apiRequest(`/api/conversations/${conversationId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setSelectedConversation(null);
+      toast({
+        title: "Success",
+        description: "Conversation deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateConversationMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: number; title: string }) => {
+      return await apiRequest(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        body: { title },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setEditingConversation(null);
+      setEditTitle("");
+      toast({
+        title: "Success",
+        description: "Conversation updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update conversation",
+        variant: "destructive",
+      });
+    },
   });
 
   // Filter conversations based on search query
@@ -41,6 +96,28 @@ export default function Dashboard() {
     // Clear search when collapsing
     if (!sidebarCollapsed) {
       setSearchQuery("");
+    }
+  };
+
+  const handleEditConversation = (conversation: Conversation) => {
+    setEditingConversation({ id: conversation.id, title: conversation.title });
+    setEditTitle(conversation.title);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingConversation && editTitle.trim()) {
+      updateConversationMutation.mutate({ id: editingConversation.id, title: editTitle.trim() });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingConversation(null);
+    setEditTitle("");
+  };
+
+  const handleDeleteConversation = (conversationId: number) => {
+    if (window.confirm("Are you sure you want to delete this conversation?")) {
+      deleteConversationMutation.mutate(conversationId);
     }
   };
 
@@ -128,37 +205,83 @@ export default function Dashboard() {
                         "w-full p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer",
                         selectedConversation === conversation.id ? "bg-blue-50 border border-blue-200" : "border border-transparent"
                       )}
-                      onClick={() => setSelectedConversation(conversation.id)}
+                      onClick={() => editingConversation?.id !== conversation.id && setSelectedConversation(conversation.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {conversation.title}
-                          </h3>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatDistanceToNow(new Date(conversation.updatedAt), { addSuffix: true })}
-                          </p>
+                          {editingConversation?.id === conversation.id ? (
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleSaveEdit();
+                                  } else if (e.key === 'Escape') {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                className="h-6 text-sm"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveEdit();
+                                }}
+                                disabled={updateConversationMutation.isPending}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelEdit();
+                                }}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <h3 className="font-medium text-gray-900 truncate">
+                                {conversation.title}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {formatDistanceToNow(new Date(conversation.updatedAt), { addSuffix: true })}
+                              </p>
+                            </>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-1 ml-2">
-                          <button 
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Add edit functionality here
-                            }}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </button>
-                          <button 
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Add delete functionality here
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
+                        {editingConversation?.id !== conversation.id && (
+                          <div className="flex items-center space-x-1 ml-2">
+                            <button 
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditConversation(conversation);
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </button>
+                            <button 
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConversation(conversation.id);
+                              }}
+                              disabled={deleteConversationMutation.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

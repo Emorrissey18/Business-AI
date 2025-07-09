@@ -1,32 +1,27 @@
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
+import bcrypt from "bcrypt";
+import { loginSchema, signupSchema } from "@shared/schema";
 
-// Simple authentication system for testing multi-user functionality
+// Password-based authentication system
 export function setupSimpleAuth(app: Express) {
-  // Simple login endpoint that creates/finds a user by email
+  // Login endpoint
   app.post('/api/login', async (req, res) => {
     try {
-      const { email, name } = req.body;
+      const validatedData = loginSchema.parse(req.body);
       
-      if (!email) {
-        return res.status(400).json({ message: 'Email is required' });
-      }
-
-      // First, try to find user by email
+      // Find user by email
       const existingUsers = await storage.getUsers();
-      let user = existingUsers.find(u => u.email === email);
+      const user = existingUsers.find(u => u.email === validatedData.email);
       
       if (!user) {
-        // Create new user
-        const userId = `user-${Buffer.from(email).toString('base64').slice(0, 10)}`;
-        const [firstName, lastName] = (name || email.split('@')[0]).split(' ');
-        user = await storage.upsertUser({
-          id: userId,
-          email: email,
-          firstName: firstName || 'User',
-          lastName: lastName || '',
-          profileImageUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || email)}&background=random`,
-        });
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid email or password' });
       }
 
       // Set session
@@ -41,10 +36,56 @@ export function setupSimpleAuth(app: Express) {
         }
       };
 
-      res.json({ success: true, user });
+      res.json({ success: true, user: { ...user, password: undefined } });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Signup endpoint
+  app.post('/api/signup', async (req, res) => {
+    try {
+      const validatedData = signupSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUsers = await storage.getUsers();
+      const existingUser = existingUsers.find(u => u.email === validatedData.email);
+      
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      // Create new user
+      const userId = `user-${Buffer.from(validatedData.email).toString('base64').slice(0, 10)}`;
+      const user = await storage.upsertUser({
+        id: userId,
+        email: validatedData.email,
+        password: hashedPassword,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        profileImageUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(validatedData.firstName + ' ' + validatedData.lastName)}&background=random`,
+      });
+
+      // Set session
+      (req as any).session.userId = user.id;
+      (req as any).session.user = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          profile_image_url: user.profileImageUrl
+        }
+      };
+
+      res.json({ success: true, user: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Signup failed" });
     }
   });
 
