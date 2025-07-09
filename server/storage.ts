@@ -35,6 +35,7 @@ import { eq, and } from "drizzle-orm";
 export interface IStorage {
   // Users - for Replit Auth
   getUser(id: string): Promise<User | undefined>;
+  getUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Documents (user-specific)
@@ -109,19 +110,35 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            ...userData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error: any) {
+      // If email unique constraint violation, try to find existing user
+      if (error.code === '23505' && error.constraint === 'users_email_unique') {
+        const existingUsers = await this.getUsers();
+        const existingUser = existingUsers.find(u => u.email === userData.email);
+        if (existingUser) {
+          return existingUser;
+        }
+      }
+      throw error;
+    }
   }
 
   // Document operations

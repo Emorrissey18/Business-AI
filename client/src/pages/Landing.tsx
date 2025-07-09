@@ -26,7 +26,7 @@ export default function Landing() {
 
     setIsLoading(true);
     try {
-      await apiRequest("/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -34,8 +34,18 @@ export default function Landing() {
         body: JSON.stringify({ email, name }),
       });
 
-      // Reload the page to trigger auth check
-      window.location.reload();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Reload the page to trigger auth check
+        window.location.reload();
+      } else {
+        throw new Error(data.message || "Login failed");
+      }
     } catch (error) {
       console.error("Login error:", error);
       toast({

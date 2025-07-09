@@ -15,10 +15,15 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      await apiRequest("/api/logout", {
+      const response = await fetch("/api/logout", {
         method: "POST",
       });
-      window.location.reload();
+      
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        throw new Error("Logout failed");
+      }
     } catch (error) {
       toast({
         title: "Logout Failed",

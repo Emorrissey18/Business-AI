@@ -12,11 +12,13 @@ export function setupSimpleAuth(app: Express) {
         return res.status(400).json({ message: 'Email is required' });
       }
 
-      // Create or get user
-      const userId = `user-${Buffer.from(email).toString('base64').slice(0, 10)}`;
-      let user = await storage.getUser(userId);
+      // First, try to find user by email
+      const existingUsers = await storage.getUsers();
+      let user = existingUsers.find(u => u.email === email);
       
       if (!user) {
+        // Create new user
+        const userId = `user-${Buffer.from(email).toString('base64').slice(0, 10)}`;
         const [firstName, lastName] = (name || email.split('@')[0]).split(' ');
         user = await storage.upsertUser({
           id: userId,
@@ -28,10 +30,10 @@ export function setupSimpleAuth(app: Express) {
       }
 
       // Set session
-      (req as any).session.userId = userId;
+      (req as any).session.userId = user.id;
       (req as any).session.user = {
         claims: {
-          sub: userId,
+          sub: user.id,
           email: user.email,
           first_name: user.firstName,
           last_name: user.lastName,
