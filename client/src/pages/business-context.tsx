@@ -7,6 +7,7 @@ import { NewBusinessContextModal } from "@/components/modals/new-business-contex
 import { Building2, AlertTriangle, Target, TrendingUp, Shield, Zap, Users, Lightbulb, Trash2, Edit, AlertCircle } from "lucide-react";
 import type { BusinessContext } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import Navigation from "@/components/navigation";
 
 const SECTION_ICONS = {
   business_structure: Building2,
@@ -127,103 +128,109 @@ export default function BusinessContextPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading business context...</p>
+      <div className="container mx-auto p-6">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading business context...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Building2 className="h-8 w-8" />
-            Business Context
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your business information that the AI should always know and factor into decisions
-          </p>
-        </div>
-        <NewBusinessContextModal />
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Contexts</p>
-                <p className="text-2xl font-bold">{totalContexts}</p>
-              </div>
-              <Building2 className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">High Priority</p>
-                <p className="text-2xl font-bold">{highPriorityCount}</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Sections</p>
-                <p className="text-2xl font-bold">{Object.keys(contextsBySection).length}</p>
-              </div>
-              <Users className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Contexts by Section */}
-      {totalContexts === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Business Context Yet</h3>
-            <p className="text-muted-foreground mb-6">
-              Add important business information that your AI assistant should always know when making decisions.
+    <div className="container mx-auto p-6">
+      <Navigation />
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <Building2 className="h-8 w-8" />
+              Business Context
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Manage your business information that the AI should always know and factor into decisions
             </p>
-            <NewBusinessContextModal />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-8">
-          {Object.entries(contextsBySection).map(([section, sectionContexts]) => {
-            const Icon = SECTION_ICONS[section as keyof typeof SECTION_ICONS] || Lightbulb;
-            return (
-              <div key={section}>
-                <div className="flex items-center gap-3 mb-4">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-xl font-semibold">
-                    {section.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </h2>
-                  <Badge variant="outline">{sectionContexts.length}</Badge>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {sectionContexts.map((context) => (
-                    <BusinessContextCard key={context.id} context={context} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          </div>
+          <NewBusinessContextModal />
         </div>
-      )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Contexts</p>
+                  <p className="text-2xl font-bold">{totalContexts}</p>
+                </div>
+                <Building2 className="h-8 w-8 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">High Priority</p>
+                  <p className="text-2xl font-bold">{highPriorityCount}</p>
+                </div>
+                <AlertCircle className="h-8 w-8 text-red-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sections</p>
+                  <p className="text-2xl font-bold">{Object.keys(contextsBySection).length}</p>
+                </div>
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contexts by Section */}
+        {totalContexts === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Business Context Yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Add important business information that your AI assistant should always know when making decisions.
+              </p>
+              <NewBusinessContextModal />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(contextsBySection).map(([section, sectionContexts]) => {
+              const Icon = SECTION_ICONS[section as keyof typeof SECTION_ICONS] || Lightbulb;
+              return (
+                <div key={section}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Icon className="h-5 w-5 text-muted-foreground" />
+                    <h2 className="text-xl font-semibold">
+                      {section.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </h2>
+                    <Badge variant="outline">{sectionContexts.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {sectionContexts.map((context) => (
+                      <BusinessContextCard key={context.id} context={context} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

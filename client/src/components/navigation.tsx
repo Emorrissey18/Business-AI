@@ -7,7 +7,7 @@ interface NavigationItem {
 }
 
 const navigationItems: NavigationItem[] = [
-  { href: "/", label: "Dashboard" },
+  { href: "/", label: "Assistant" },
   { href: "/documents", label: "Documents" },
   { href: "/goals", label: "Goals" },
   { href: "/tasks", label: "Tasks" },
