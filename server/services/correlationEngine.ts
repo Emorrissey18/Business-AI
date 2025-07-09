@@ -49,7 +49,7 @@ FINANCIAL RECORD TO ANALYZE:
 - Date: ${financialRecord.date}
 
 EXISTING GOALS:
-${allGoals.map(g => `- ID: ${g.id}, Title: "${g.title}", Progress: ${g.progress}%, Target: ${g.targetDate}, Status: ${g.status}, Description: ${g.description || 'No description'}`).join('\n')}
+${allGoals.map(g => `- ID: ${g.id}, Title: "${g.title}", Type: ${g.type}, Category: ${g.category}, Progress: ${g.progress}%, Target Amount: ${g.targetAmount ? '$' + (g.targetAmount / 100).toFixed(2) : 'Not set'}, Target Date: ${g.targetDate}, Status: ${g.status}, Description: ${g.description || 'No description'}`).join('\n')}
 
 TOTAL REVENUE ANALYSIS:
 - Total Revenue: $${(existingFinancialRecords.filter(r => r.type === 'revenue').reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(2)}
@@ -65,8 +65,9 @@ ${existingFinancialRecords.slice(-5).map(r => `- ${r.type}: ${r.category} $${(r.
 ANALYSIS REQUIREMENTS:
 1. Identify which goals and tasks are directly related to this financial record
 2. For revenue-related goals, calculate accurate progress based on actual revenue targets:
-   - "Increase Q1 Revenue by 25%" with target $100,000 means progress = (total_income / 100000) * 100
-   - "Increase Monthly Revenue" with 20% increase means calculate based on monthly revenue patterns
+   - If goal has targetAmount field set, calculate progress = (current_total_revenue / targetAmount) * 100
+   - For goals like "Reach $100,000 revenue", extract target from title/description if targetAmount not set
+   - Only update progress if you can determine a clear target amount
 3. Only suggest progress updates that are mathematically accurate based on financial data
 4. Suggest task status changes based on financial evidence
 5. Provide business insights about spending patterns and goal alignment
@@ -170,26 +171,26 @@ export async function generateBusinessInsights(): Promise<{
       storage.getFinancialRecords()
     ]);
 
-    const totalIncome = financialRecords
-      .filter(r => r.type === 'income')
+    const totalRevenue = financialRecords
+      .filter(r => r.type === 'revenue')
       .reduce((sum, r) => sum + r.amount, 0);
 
     const totalExpenses = financialRecords
       .filter(r => r.type === 'expense')
       .reduce((sum, r) => sum + r.amount, 0);
 
-    const totalInvestments = financialRecords
-      .filter(r => r.type === 'investment')
+    const totalOther = financialRecords
+      .filter(r => r.type === 'other')
       .reduce((sum, r) => sum + r.amount, 0);
 
     const prompt = `
 Analyze this business data to provide comprehensive insights:
 
 FINANCIAL SUMMARY:
-- Total Income: $${(totalIncome / 100).toFixed(2)}
+- Total Revenue: $${(totalRevenue / 100).toFixed(2)}
 - Total Expenses: $${(totalExpenses / 100).toFixed(2)}
-- Total Investments: $${(totalInvestments / 100).toFixed(2)}
-- Net Cash Flow: $${((totalIncome - totalExpenses - totalInvestments) / 100).toFixed(2)}
+- Total Other: $${(totalOther / 100).toFixed(2)}
+- Net Profit: $${((totalRevenue - totalExpenses) / 100).toFixed(2)}
 
 GOALS STATUS:
 ${goals.map(g => `- "${g.title}": ${g.progress}% complete, Status: ${g.status}, Target: ${g.targetDate}`).join('\n')}

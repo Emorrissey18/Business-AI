@@ -28,6 +28,7 @@ export const goals = pgTable("goals", {
   description: text("description"),
   type: text("type").notNull(), // revenue, expense, other
   category: text("category").notNull(),
+  targetAmount: integer("target_amount"), // target amount in cents for revenue/expense goals
   targetDate: timestamp("target_date"),
   progress: integer("progress").notNull().default(0), // 0-100
   status: text("status").notNull().default("active"), // active, completed, paused

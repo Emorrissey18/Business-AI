@@ -486,8 +486,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const record = await storage.createFinancialRecord(recordData);
       
-      // Trigger AI correlation analysis in background
-      processFinancialCorrelation(record.id);
+      // Trigger immediate AI correlation analysis
+      try {
+        await processFinancialCorrelation(record.id);
+        console.log(`✓ Auto-correlation completed for financial record ${record.id}`);
+      } catch (correlationError) {
+        console.error('Correlation analysis failed but record was saved:', correlationError);
+      }
       
       res.status(201).json(record);
     } catch (error) {
@@ -514,6 +519,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!record) {
         res.status(404).json({ message: 'Financial record not found' });
       } else {
+        // Trigger correlation analysis for updated record
+        try {
+          await processFinancialCorrelation(record.id);
+          console.log(`✓ Auto-correlation completed for updated financial record ${record.id}`);
+        } catch (correlationError) {
+          console.error('Correlation analysis failed but record was updated:', correlationError);
+        }
+        
         res.json(record);
       }
     } catch (error) {
@@ -670,6 +683,45 @@ async function processFinancialCorrelation(financialRecordId: number) {
     });
   } catch (error) {
     console.error('Error processing financial correlation:', error);
+  }
+}
+
+// Function to update revenue-based goals with accurate calculations
+async function updateRevenueBasedGoals() {
+  try {
+    const [goals, financialRecords] = await Promise.all([
+      storage.getGoals(),
+      storage.getFinancialRecords()
+    ]);
+    
+    // Calculate current totals
+    const totalRevenue = financialRecords
+      .filter(r => r.type === 'revenue')
+      .reduce((sum, r) => sum + r.amount, 0);
+    
+    const totalExpenses = financialRecords
+      .filter(r => r.type === 'expense')
+      .reduce((sum, r) => sum + r.amount, 0);
+    
+    // Update revenue-based goals with target amounts
+    for (const goal of goals) {
+      if (goal.type === 'revenue' && goal.targetAmount) {
+        const newProgress = Math.min(100, Math.floor((totalRevenue / goal.targetAmount) * 100));
+        if (newProgress !== goal.progress) {
+          await storage.updateGoal(goal.id, { progress: newProgress });
+          console.log(`✓ Updated goal "${goal.title}" progress to ${newProgress}% (${totalRevenue / 100} / ${goal.targetAmount / 100})`);
+        }
+      } else if (goal.type === 'expense' && goal.targetAmount) {
+        // For expense goals, progress = (target - actual) / target * 100 (staying under budget)
+        const newProgress = Math.max(0, Math.min(100, Math.floor(((goal.targetAmount - totalExpenses) / goal.targetAmount) * 100)));
+        if (newProgress !== goal.progress) {
+          await storage.updateGoal(goal.id, { progress: newProgress });
+          console.log(`✓ Updated expense goal "${goal.title}" progress to ${newProgress}%`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating revenue-based goals:', error);
   }
 }
 
