@@ -208,7 +208,7 @@ export default function Dashboard() {
                       onClick={() => editingConversation?.id !== conversation.id && setSelectedConversation(conversation.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 max-w-[200px]">
                           {editingConversation?.id === conversation.id ? (
                             <div className="flex items-center space-x-2">
                               <Input
@@ -260,9 +260,9 @@ export default function Dashboard() {
                           )}
                         </div>
                         {editingConversation?.id !== conversation.id && (
-                          <div className="flex items-center space-x-1 ml-2 opacity-100 bg-white rounded-md p-1">
+                          <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
                             <button 
-                              className="h-6 w-6 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-blue-100 hover:text-blue-600 text-gray-600"
+                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-blue-100 hover:text-blue-600 text-gray-500 border border-gray-200 bg-white shadow-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditConversation(conversation);
@@ -272,7 +272,7 @@ export default function Dashboard() {
                               <Edit className="h-3 w-3" />
                             </button>
                             <button 
-                              className="h-6 w-6 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-red-100 hover:text-red-600 text-gray-600"
+                              className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-red-100 hover:text-red-600 text-gray-500 border border-gray-200 bg-white shadow-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteConversation(conversation.id);
