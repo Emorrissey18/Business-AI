@@ -289,8 +289,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
               try {
                 if (action.type === 'update_task_status') {
                   await storage.updateTask(action.parameters.taskId, { status: action.parameters.status });
+                } else if (action.type === 'create_task') {
+                  const taskData = {
+                    ...action.parameters,
+                    dueDate: action.parameters.dueDate ? new Date(action.parameters.dueDate) : null
+                  };
+                  await storage.createTask(taskData);
                 } else if (action.type === 'update_goal_progress') {
                   await storage.updateGoal(action.parameters.goalId, { progress: action.parameters.progress });
+                } else if (action.type === 'create_goal') {
+                  const goalData = {
+                    ...action.parameters,
+                    targetDate: action.parameters.targetDate ? new Date(action.parameters.targetDate) : null,
+                    targetAmount: action.parameters.targetAmount ? action.parameters.targetAmount * 100 : null, // Convert to cents
+                    status: 'active',
+                    progress: 0
+                  };
+                  await storage.createGoal(goalData);
+                } else if (action.type === 'create_calendar_event') {
+                  const eventData = {
+                    ...action.parameters,
+                    startDate: new Date(action.parameters.startDate),
+                    endDate: new Date(action.parameters.endDate),
+                    allDay: action.parameters.allDay || false,
+                    completed: false
+                  };
+                  await storage.createCalendarEvent(eventData);
+                } else if (action.type === 'update_calendar_event') {
+                  const { eventId, ...updateData } = action.parameters;
+                  const updates: any = {};
+                  if (updateData.title) updates.title = updateData.title;
+                  if (updateData.description) updates.description = updateData.description;
+                  if (updateData.completed !== undefined) updates.completed = updateData.completed;
+                  if (updateData.startDate) updates.startDate = new Date(updateData.startDate);
+                  if (updateData.endDate) updates.endDate = new Date(updateData.endDate);
+                  await storage.updateCalendarEvent(eventId, updates);
+                } else if (action.type === 'create_financial_record') {
+                  const recordData = {
+                    ...action.parameters,
+                    date: new Date(action.parameters.date),
+                    amount: action.parameters.amount * 100 // Convert to cents
+                  };
+                  const record = await storage.createFinancialRecord(recordData);
+                  // Trigger automatic correlation analysis
+                  processFinancialCorrelation(record.id);
+                } else if (action.type === 'update_financial_record') {
+                  const { recordId, ...updateData } = action.parameters;
+                  const updates: any = {};
+                  if (updateData.type) updates.type = updateData.type;
+                  if (updateData.category) updates.category = updateData.category;
+                  if (updateData.amount !== undefined) updates.amount = updateData.amount * 100; // Convert to cents
+                  if (updateData.description) updates.description = updateData.description;
+                  if (updateData.date) updates.date = new Date(updateData.date);
+                  const record = await storage.updateFinancialRecord(recordId, updates);
+                  if (record) {
+                    // Trigger automatic correlation analysis
+                    processFinancialCorrelation(record.id);
+                  }
                 }
               } catch (actionError) {
                 console.error('Error executing AI action:', actionError);
@@ -564,7 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Action endpoints for task and goal management
+  // AI Action endpoints for comprehensive data management
   app.post('/api/ai/update-task-status', async (req: Request, res: Response) => {
     try {
       const { taskId, status } = req.body;
@@ -587,6 +642,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating task status:', error);
       res.status(500).json({ message: 'Failed to update task status' });
+    }
+  });
+
+  app.post('/api/ai/create-task', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask(validatedData);
+      res.status(201).json({ message: 'Task created successfully', task });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid task data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create task' });
+      }
     }
   });
 
@@ -614,6 +684,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating goal progress:', error);
       res.status(500).json({ message: 'Failed to update goal progress' });
+    }
+  });
+
+  app.post('/api/ai/create-goal', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertGoalSchema.parse(req.body);
+      const goal = await storage.createGoal(validatedData);
+      res.status(201).json({ message: 'Goal created successfully', goal });
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid goal data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create goal' });
+      }
+    }
+  });
+
+  app.post('/api/ai/create-calendar-event', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertCalendarEventSchema.parse(req.body);
+      const event = await storage.createCalendarEvent(validatedData);
+      res.status(201).json({ message: 'Calendar event created successfully', event });
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid calendar event data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create calendar event' });
+      }
+    }
+  });
+
+  app.post('/api/ai/update-calendar-event', async (req: Request, res: Response) => {
+    try {
+      const { eventId, ...updateData } = req.body;
+      
+      if (!eventId) {
+        return res.status(400).json({ message: 'Event ID is required' });
+      }
+      
+      const event = await storage.updateCalendarEvent(eventId, updateData);
+      if (!event) {
+        return res.status(404).json({ message: 'Calendar event not found' });
+      }
+      
+      res.json({ message: 'Calendar event updated successfully', event });
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      res.status(500).json({ message: 'Failed to update calendar event' });
+    }
+  });
+
+  app.post('/api/ai/create-financial-record', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertFinancialRecordSchema.parse(req.body);
+      const record = await storage.createFinancialRecord(validatedData);
+      
+      // Trigger automatic correlation analysis
+      processFinancialCorrelation(record.id);
+      
+      res.status(201).json({ message: 'Financial record created successfully', record });
+    } catch (error) {
+      console.error('Error creating financial record:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid financial record data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create financial record' });
+      }
+    }
+  });
+
+  app.post('/api/ai/update-financial-record', async (req: Request, res: Response) => {
+    try {
+      const { recordId, ...updateData } = req.body;
+      
+      if (!recordId) {
+        return res.status(400).json({ message: 'Record ID is required' });
+      }
+      
+      const record = await storage.updateFinancialRecord(recordId, updateData);
+      if (!record) {
+        return res.status(404).json({ message: 'Financial record not found' });
+      }
+      
+      // Trigger automatic correlation analysis
+      processFinancialCorrelation(record.id);
+      
+      res.json({ message: 'Financial record updated successfully', record });
+    } catch (error) {
+      console.error('Error updating financial record:', error);
+      res.status(500).json({ message: 'Failed to update financial record' });
     }
   });
 

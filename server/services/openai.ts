@@ -150,8 +150,16 @@ FORMATTING GUIDELINES:
 - Use tables when comparing multiple items with similar attributes
 
 FUNCTION CALLING REQUIREMENTS:
-- You have access to update_task_status and update_goal_progress functions
-- You MUST call these functions whenever the user provides information that changes task status or goal progress
+- You have access to comprehensive data management functions:
+  * update_task_status - Update task status (pending, in_progress, completed)
+  * create_task - Create new tasks
+  * update_goal_progress - Update goal progress percentage
+  * create_goal - Create new goals
+  * create_calendar_event - Create calendar events
+  * update_calendar_event - Update calendar events (including marking as completed)
+  * create_financial_record - Create financial records
+  * update_financial_record - Update financial records
+- You MUST call these functions whenever the user asks for changes to data
 - NEVER say you're updating something without calling the actual function
 - NEVER say "updating now", "executing update", or "changes have been applied" without calling the function
 - If you calculate a new progress percentage, immediately call update_goal_progress with that percentage
@@ -161,6 +169,10 @@ EXAMPLES OF REQUIRED FUNCTION CALLS:
 - User: "my revenue went from 1000 to 1200" → You MUST call update_goal_progress with calculated percentage
 - User: "I completed the client calls task" → You MUST call update_task_status with "completed"
 - User: "mark my goal as 75% complete" → You MUST call update_goal_progress with 75
+- User: "schedule a meeting with client tomorrow at 3pm" → You MUST call create_calendar_event
+- User: "create a task to review the proposal" → You MUST call create_task
+- User: "add $5000 revenue from new client" → You MUST call create_financial_record
+- User: "mark that meeting as completed" → You MUST call update_calendar_event
 
 PROGRESS CALCULATION RULES:
 - Goal progress must be between 0 and 100 (never exceed 100%)
@@ -335,6 +347,36 @@ GOAL IDENTIFICATION:
       {
         type: "function" as const,
         function: {
+          name: "create_task",
+          description: "Create a new task",
+          parameters: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "The title of the task"
+              },
+              description: {
+                type: "string",
+                description: "Optional description of the task"
+              },
+              priority: {
+                type: "string",
+                enum: ["low", "medium", "high"],
+                description: "Task priority level"
+              },
+              dueDate: {
+                type: "string",
+                description: "Optional due date in ISO format"
+              }
+            },
+            required: ["title"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
           name: "update_goal_progress",
           description: "Update the progress percentage of a specific goal",
           parameters: {
@@ -352,6 +394,186 @@ GOAL IDENTIFICATION:
               }
             },
             required: ["goalId", "progress"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
+          name: "create_goal",
+          description: "Create a new goal",
+          parameters: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "The title of the goal"
+              },
+              description: {
+                type: "string",
+                description: "Optional description of the goal"
+              },
+              type: {
+                type: "string",
+                enum: ["revenue", "expense", "other"],
+                description: "Type of goal"
+              },
+              category: {
+                type: "string",
+                description: "Category of the goal"
+              },
+              targetDate: {
+                type: "string",
+                description: "Target completion date in ISO format"
+              },
+              targetAmount: {
+                type: "number",
+                description: "Target amount in dollars (for revenue/expense goals)"
+              }
+            },
+            required: ["title", "type", "category"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
+          name: "create_calendar_event",
+          description: "Create a new calendar event",
+          parameters: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "The title of the event"
+              },
+              description: {
+                type: "string",
+                description: "Optional description of the event"
+              },
+              startDate: {
+                type: "string",
+                description: "Start date and time in ISO format"
+              },
+              endDate: {
+                type: "string",
+                description: "End date and time in ISO format"
+              },
+              allDay: {
+                type: "boolean",
+                description: "Whether this is an all-day event"
+              }
+            },
+            required: ["title", "startDate", "endDate"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
+          name: "update_calendar_event",
+          description: "Update an existing calendar event",
+          parameters: {
+            type: "object",
+            properties: {
+              eventId: {
+                type: "number",
+                description: "The ID of the event to update"
+              },
+              title: {
+                type: "string",
+                description: "Optional new title"
+              },
+              description: {
+                type: "string",
+                description: "Optional new description"
+              },
+              completed: {
+                type: "boolean",
+                description: "Mark event as completed or not"
+              },
+              startDate: {
+                type: "string",
+                description: "Optional new start date and time in ISO format"
+              },
+              endDate: {
+                type: "string",
+                description: "Optional new end date and time in ISO format"
+              }
+            },
+            required: ["eventId"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
+          name: "create_financial_record",
+          description: "Create a new financial record",
+          parameters: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["revenue", "expense", "other"],
+                description: "Type of financial record"
+              },
+              category: {
+                type: "string",
+                description: "Category of the financial record"
+              },
+              amount: {
+                type: "number",
+                description: "Amount in dollars"
+              },
+              description: {
+                type: "string",
+                description: "Optional description"
+              },
+              date: {
+                type: "string",
+                description: "Date of the financial record in ISO format"
+              }
+            },
+            required: ["type", "category", "amount", "date"]
+          }
+        }
+      },
+      {
+        type: "function" as const,
+        function: {
+          name: "update_financial_record",
+          description: "Update an existing financial record",
+          parameters: {
+            type: "object",
+            properties: {
+              recordId: {
+                type: "number",
+                description: "The ID of the financial record to update"
+              },
+              type: {
+                type: "string",
+                enum: ["revenue", "expense", "other"],
+                description: "Optional new type"
+              },
+              category: {
+                type: "string",
+                description: "Optional new category"
+              },
+              amount: {
+                type: "number",
+                description: "Optional new amount in dollars"
+              },
+              description: {
+                type: "string",
+                description: "Optional new description"
+              },
+              date: {
+                type: "string",
+                description: "Optional new date in ISO format"
+              }
+            },
+            required: ["recordId"]
           }
         }
       }
@@ -402,6 +624,18 @@ GOAL IDENTIFICATION:
           return `Updated goal progress to ${action.parameters.progress}%`;
         } else if (action.type === 'update_task_status') {
           return `Updated task status to ${action.parameters.status}`;
+        } else if (action.type === 'create_task') {
+          return `Created new task: "${action.parameters.title}"`;
+        } else if (action.type === 'create_goal') {
+          return `Created new goal: "${action.parameters.title}"`;
+        } else if (action.type === 'create_calendar_event') {
+          return `Created calendar event: "${action.parameters.title}"`;
+        } else if (action.type === 'update_calendar_event') {
+          return `Updated calendar event`;
+        } else if (action.type === 'create_financial_record') {
+          return `Created financial record: $${action.parameters.amount} (${action.parameters.type})`;
+        } else if (action.type === 'update_financial_record') {
+          return `Updated financial record`;
         }
         return 'Completed action';
       });
