@@ -1,12 +1,32 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bell, User, Brain } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Bell, User, Brain, LogOut } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest("/api/logout", {
+        method: "POST",
+      });
+      window.location.reload();
+    } catch (error) {
+      toast({
+        title: "Logout Failed",
+        description: "Unable to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -32,11 +52,22 @@ export default function Header() {
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
             </Button>
-            <Avatar>
-              <AvatarFallback>
-                <User className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="flex items-center space-x-2">
+              <Avatar>
+                {user?.profileImageUrl && (
+                  <AvatarImage src={user.profileImageUrl} alt={user.firstName || "User"} />
+                )}
+                <AvatarFallback>
+                  {user?.firstName?.[0] || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-gray-700">
+                {user?.firstName || "User"}
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

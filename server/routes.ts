@@ -2,7 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { devAuthMiddleware, isAuthenticatedDev } from "./devAuth";
+import { setupSimpleAuth, isAuthenticatedSimple } from "./simpleAuth";
+import { getSimpleSession } from "./sessionStore";
 import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema, insertBusinessContextSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
@@ -21,15 +22,14 @@ const updateGoalSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication - use dev middleware in development
-  if (process.env.NODE_ENV === 'development') {
-    app.use(devAuthMiddleware);
-  } else {
-    await setupAuth(app);
-  }
+  // Setup session store
+  app.use(getSimpleSession());
+  
+  // Setup simple authentication for testing
+  setupSimpleAuth(app);
 
-  // Determine which auth middleware to use
-  const authMiddleware = process.env.NODE_ENV === 'development' ? isAuthenticatedDev : isAuthenticated;
+  // Use simple auth middleware
+  const authMiddleware = isAuthenticatedSimple;
 
   // Auth routes
   app.get('/api/auth/user', authMiddleware, async (req: any, res: Response) => {
