@@ -20,6 +20,8 @@ import { z } from "zod";
 
 const editTaskSchema = insertTaskSchema.extend({
   status: z.enum(['pending', 'in_progress', 'completed'])
+}).extend({
+  dueDate: z.date().optional(),
 });
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
@@ -69,7 +71,7 @@ export function EditTaskModal({ task, open, onOpenChange }: EditTaskModalProps) 
   function onSubmit(data: EditTaskFormData) {
     updateMutation.mutate({
       ...data,
-      dueDate: data.dueDate?.toISOString(),
+      dueDate: data.dueDate ? data.dueDate.toISOString() : null,
     });
   }
 

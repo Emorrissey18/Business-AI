@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   };
                   const record = await storage.createFinancialRecord(userId, recordData);
                   // Trigger automatic correlation analysis
-                  processFinancialCorrelation(record.id);
+                  processFinancialCorrelation(userId, record.id);
                 } else if (action.type === 'update_financial_record') {
                   const { recordId, ...updateData } = action.parameters;
                   const updates: any = {};
@@ -382,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const record = await storage.updateFinancialRecord(userId, recordId, updates);
                   if (record) {
                     // Trigger automatic correlation analysis
-                    processFinancialCorrelation(record.id);
+                    processFinancialCorrelation(userId, record.id);
                   }
                 }
               } catch (actionError) {
@@ -466,6 +466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Convert dueDate string to Date object if present
+      if (updates.dueDate && typeof updates.dueDate === 'string') {
+        updates.dueDate = new Date(updates.dueDate);
+      }
+      
       const task = await storage.updateTask(userId, id, updates);
       if (!task) {
         res.status(404).json({ message: 'Task not found' });
@@ -526,7 +532,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const event = await storage.updateCalendarEvent(userId, id, req.body);
+      const updates = req.body;
+      
+      // Convert date strings to Date objects if present
+      if (updates.startDate) {
+        updates.startDate = new Date(updates.startDate);
+      }
+      if (updates.endDate) {
+        updates.endDate = new Date(updates.endDate);
+      }
+      
+      const event = await storage.updateCalendarEvent(userId, id, updates);
       if (!event) {
         res.status(404).json({ message: 'Calendar event not found' });
       } else {
@@ -985,7 +1001,7 @@ async function processFinancialCorrelation(userId: string, financialRecordId: nu
     const analysis = await analyzeDataCorrelations(financialRecord, goals, tasks, allRecords);
     
     // Execute correlation actions (goal progress updates, task status changes)
-    await executeCorrelationActions(analysis);
+    await executeCorrelationActions(userId, analysis);
     
     // Update revenue-based goals with accurate calculations
     await updateRevenueBasedGoals(userId);

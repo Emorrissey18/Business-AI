@@ -138,27 +138,29 @@ Respond with a JSON object in this exact format:
   }
 }
 
-export async function executeCorrelationActions(analysis: CorrelationAnalysis): Promise<void> {
+export async function executeCorrelationActions(userId: string, analysis: CorrelationAnalysis): Promise<void> {
   try {
     // Execute goal progress updates
     for (const update of analysis.progressUpdates) {
       // Cap progress at 100% and ensure it's a valid integer
       const cappedProgress = Math.floor(Math.min(100, Math.max(0, update.newProgress)));
-      await storage.updateGoal(update.goalId, { progress: cappedProgress });
+      await storage.updateGoal(userId, update.goalId, { progress: cappedProgress });
       console.log(`Updated goal ${update.goalId} progress to ${cappedProgress}%: ${update.reason}`);
     }
 
     // Execute task status updates
     for (const update of analysis.taskUpdates) {
-      await storage.updateTask(update.taskId, { status: update.newStatus });
-      console.log(`Updated task ${update.taskId} status to ${update.newStatus}: ${update.reason}`);
+      if (update.newStatus) {
+        await storage.updateTask(userId, update.taskId, { status: update.newStatus });
+        console.log(`Updated task ${update.taskId} status to ${update.newStatus}: ${update.reason}`);
+      }
     }
   } catch (error) {
     console.error('Error executing correlation actions:', error);
   }
 }
 
-export async function generateBusinessInsights(): Promise<{
+export async function generateBusinessInsights(userId: string): Promise<{
   insights: string[];
   financialTrends: string[];
   goalAlignment: string[];
@@ -166,9 +168,9 @@ export async function generateBusinessInsights(): Promise<{
 }> {
   try {
     const [goals, tasks, financialRecords] = await Promise.all([
-      storage.getGoals(),
-      storage.getTasks(),
-      storage.getFinancialRecords()
+      storage.getGoals(userId),
+      storage.getTasks(userId),
+      storage.getFinancialRecords(userId)
     ]);
 
     const totalRevenue = financialRecords

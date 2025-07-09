@@ -14,8 +14,14 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { format } from "date-fns";
 
-const editEventSchema = insertCalendarEventSchema.extend({
+const editEventSchema = z.object({
   id: z.number(),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string(),
+  allDay: z.boolean().default(false),
+  completed: z.boolean().default(false),
 });
 
 type EditEventFormData = z.infer<typeof editEventSchema>;
