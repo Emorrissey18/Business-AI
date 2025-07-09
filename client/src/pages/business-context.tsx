@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { NewBusinessContextModal } from "@/components/modals/new-business-context-modal";
+import { EditBusinessContextModal } from "@/components/modals/edit-business-context-modal";
 import { Building2, AlertTriangle, Target, TrendingUp, Shield, Zap, Users, Lightbulb, Trash2, Edit, AlertCircle } from "lucide-react";
 import type { BusinessContext } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -38,6 +40,7 @@ const PRIORITY_COLORS = {
 } as const;
 
 function BusinessContextCard({ context }: { context: BusinessContext }) {
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const Icon = SECTION_ICONS[context.section as keyof typeof SECTION_ICONS] || Lightbulb;
@@ -82,7 +85,11 @@ function BusinessContextCard({ context }: { context: BusinessContext }) {
             </div>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setEditModalOpen(true)}
+            >
               <Edit className="h-4 w-4" />
             </Button>
             <Button
@@ -105,6 +112,12 @@ function BusinessContextCard({ context }: { context: BusinessContext }) {
           )}
         </div>
       </CardContent>
+      
+      <EditBusinessContextModal 
+        context={context}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
     </Card>
   );
 }
