@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema, insertBusinessContextSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
@@ -19,11 +20,26 @@ const updateGoalSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup Replit Auth
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
   
   // Documents routes
-  app.get('/api/documents', async (req: Request, res: Response) => {
+  app.get('/api/documents', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const documents = await storage.getDocuments();
+      const userId = req.user.claims.sub;
+      const documents = await storage.getDocuments(userId);
       res.json(documents);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -31,10 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/documents/:id', async (req: Request, res: Response) => {
+  app.get('/api/documents/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const document = await storage.getDocument(id);
+      const document = await storage.getDocument(userId, id);
       if (!document) {
         return res.status(404).json({ message: 'Document not found' });
       }
@@ -45,13 +62,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/documents/upload', upload.single('file'), async (req: Request, res: Response) => {
+  app.post('/api/documents/upload', isAuthenticated, upload.single('file'), async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
 
-      const document = await storage.createDocument({
+      const document = await storage.createDocument(userId, {
         filename: req.file.filename,
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
@@ -64,17 +82,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(document);
 
       // Process the document asynchronously
-      processDocumentAsync(document.id, req.file.path, req.file.mimetype);
+      processDocumentAsync(userId, document.id, req.file.path, req.file.mimetype);
     } catch (error) {
       console.error('Error uploading document:', error);
       res.status(500).json({ message: 'Failed to upload document' });
     }
   });
 
-  app.delete('/api/documents/:id', async (req: Request, res: Response) => {
+  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteDocument(id);
+      const success = await storage.deleteDocument(userId, id);
       if (!success) {
         return res.status(404).json({ message: 'Document not found' });
       }
@@ -86,9 +105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Goals routes
-  app.get('/api/goals', async (req: Request, res: Response) => {
+  app.get('/api/goals', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const goals = await storage.getGoals();
+      const userId = req.user.claims.sub;
+      const goals = await storage.getGoals(userId);
       res.json(goals);
     } catch (error) {
       console.error('Error fetching goals:', error);
@@ -96,15 +116,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/goals', async (req: Request, res: Response) => {
+  app.post('/api/goals', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertGoalSchema.parse(req.body);
       // Convert targetDate string to Date object if provided
       const goalData = {
         ...validatedData,
         targetDate: validatedData.targetDate ? new Date(validatedData.targetDate) : null
       };
-      const goal = await storage.createGoal(goalData);
+      const goal = await storage.createGoal(userId, goalData);
       res.json(goal);
     } catch (error) {
       console.error('Error creating goal:', error);
@@ -116,8 +137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/goals/:id', async (req: Request, res: Response) => {
+  app.patch('/api/goals/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const validatedData = updateGoalSchema.parse(req.body);
       
@@ -127,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetDate: validatedData.targetDate ? new Date(validatedData.targetDate) : undefined
       };
       
-      const updatedGoal = await storage.updateGoal(id, updateData);
+      const updatedGoal = await storage.updateGoal(userId, id, updateData);
       if (!updatedGoal) {
         return res.status(404).json({ message: 'Goal not found' });
       }
@@ -143,10 +165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/goals/:id', async (req: Request, res: Response) => {
+  app.delete('/api/goals/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteGoal(id);
+      const success = await storage.deleteGoal(userId, id);
       if (!success) {
         return res.status(404).json({ message: 'Goal not found' });
       }
@@ -158,9 +181,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Insights routes
-  app.get('/api/insights', async (req: Request, res: Response) => {
+  app.get('/api/insights', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const insights = await storage.getAiInsights();
+      const userId = req.user.claims.sub;
+      const insights = await storage.getAiInsights(userId);
       res.json(insights);
     } catch (error) {
       console.error('Error fetching insights:', error);
@@ -168,10 +192,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/insights/document/:documentId', async (req: Request, res: Response) => {
+  app.get('/api/insights/document/:documentId', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const documentId = parseInt(req.params.documentId);
-      const insights = await storage.getAiInsightsByDocument(documentId);
+      const insights = await storage.getAiInsightsByDocument(userId, documentId);
       res.json(insights);
     } catch (error) {
       console.error('Error fetching insights:', error);
@@ -180,11 +205,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stats route
-  app.get('/api/stats', async (req: Request, res: Response) => {
+  app.get('/api/stats', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const documents = await storage.getDocuments();
-      const goals = await storage.getGoals();
-      const insights = await storage.getAiInsights();
+      const userId = req.user.claims.sub;
+      const documents = await storage.getDocuments(userId);
+      const goals = await storage.getGoals(userId);
+      const insights = await storage.getAiInsights(userId);
 
       const stats = {
         documentsProcessed: documents.filter(doc => doc.status === 'completed').length,
@@ -202,9 +228,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations routes
-  app.get('/api/conversations', async (req: Request, res: Response) => {
+  app.get('/api/conversations', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const conversations = await storage.getConversations();
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getConversations(userId);
       res.json(conversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -212,10 +239,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/conversations', async (req: Request, res: Response) => {
+  app.post('/api/conversations', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertConversationSchema.parse(req.body);
-      const conversation = await storage.createConversation(validatedData);
+      const conversation = await storage.createConversation(userId, validatedData);
       res.json(conversation);
     } catch (error) {
       console.error('Error creating conversation:', error);
@@ -228,10 +256,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages routes
-  app.get('/api/messages/:conversationId', async (req: Request, res: Response) => {
+  app.get('/api/messages/:conversationId', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const conversationId = parseInt(req.params.conversationId);
-      const messages = await storage.getMessagesByConversation(conversationId);
+      const messages = await storage.getMessagesByConversation(userId, conversationId);
       res.json(messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -239,15 +268,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/messages', async (req: Request, res: Response) => {
+  app.post('/api/messages', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertMessageSchema.parse(req.body);
-      const userMessage = await storage.createMessage(validatedData);
+      const userMessage = await storage.createMessage(userId, validatedData);
       
       // If it's a user message, generate an AI response
       if (validatedData.role === 'user' && validatedData.conversationId) {
         // Get conversation history
-        const conversationMessages = await storage.getMessagesByConversation(validatedData.conversationId);
+        const conversationMessages = await storage.getMessagesByConversation(userId, validatedData.conversationId);
         
         // Convert to format expected by OpenAI
         const chatHistory = conversationMessages.map(msg => ({
@@ -258,13 +288,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Fetch context data for AI
           const [tasks, goals, documents, insights, calendarEvents, financialRecords, businessContexts] = await Promise.all([
-            storage.getTasks(),
-            storage.getGoals(),
-            storage.getDocuments(),
-            storage.getAiInsights(),
-            storage.getCalendarEvents(),
-            storage.getFinancialRecords(),
-            storage.getBusinessContexts()
+            storage.getTasks(userId),
+            storage.getGoals(userId),
+            storage.getDocuments(userId),
+            storage.getAiInsights(userId),
+            storage.getCalendarEvents(userId),
+            storage.getFinancialRecords(userId),
+            storage.getBusinessContexts(userId)
           ]);
           
           const contextData = {
@@ -288,15 +318,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             for (const action of aiResult.actions) {
               try {
                 if (action.type === 'update_task_status') {
-                  await storage.updateTask(action.parameters.taskId, { status: action.parameters.status });
+                  await storage.updateTask(userId, action.parameters.taskId, { status: action.parameters.status });
                 } else if (action.type === 'create_task') {
                   const taskData = {
                     ...action.parameters,
                     dueDate: action.parameters.dueDate ? new Date(action.parameters.dueDate) : null
                   };
-                  await storage.createTask(taskData);
+                  await storage.createTask(userId, taskData);
                 } else if (action.type === 'update_goal_progress') {
-                  await storage.updateGoal(action.parameters.goalId, { progress: action.parameters.progress });
+                  await storage.updateGoal(userId, action.parameters.goalId, { progress: action.parameters.progress });
                 } else if (action.type === 'create_goal') {
                   const goalData = {
                     ...action.parameters,
@@ -305,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     status: 'active',
                     progress: 0
                   };
-                  await storage.createGoal(goalData);
+                  await storage.createGoal(userId, goalData);
                 } else if (action.type === 'create_calendar_event') {
                   const eventData = {
                     ...action.parameters,
@@ -314,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     allDay: action.parameters.allDay || false,
                     completed: false
                   };
-                  await storage.createCalendarEvent(eventData);
+                  await storage.createCalendarEvent(userId, eventData);
                 } else if (action.type === 'update_calendar_event') {
                   const { eventId, ...updateData } = action.parameters;
                   const updates: any = {};
@@ -323,14 +353,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (updateData.completed !== undefined) updates.completed = updateData.completed;
                   if (updateData.startDate) updates.startDate = new Date(updateData.startDate);
                   if (updateData.endDate) updates.endDate = new Date(updateData.endDate);
-                  await storage.updateCalendarEvent(eventId, updates);
+                  await storage.updateCalendarEvent(userId, eventId, updates);
                 } else if (action.type === 'create_financial_record') {
                   const recordData = {
                     ...action.parameters,
                     date: new Date(action.parameters.date),
                     amount: action.parameters.amount * 100 // Convert to cents
                   };
-                  const record = await storage.createFinancialRecord(recordData);
+                  const record = await storage.createFinancialRecord(userId, recordData);
                   // Trigger automatic correlation analysis
                   processFinancialCorrelation(record.id);
                 } else if (action.type === 'update_financial_record') {
@@ -341,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (updateData.amount !== undefined) updates.amount = updateData.amount * 100; // Convert to cents
                   if (updateData.description) updates.description = updateData.description;
                   if (updateData.date) updates.date = new Date(updateData.date);
-                  const record = await storage.updateFinancialRecord(recordId, updates);
+                  const record = await storage.updateFinancialRecord(userId, recordId, updates);
                   if (record) {
                     // Trigger automatic correlation analysis
                     processFinancialCorrelation(record.id);
@@ -354,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Save AI response
-          const aiMessage = await storage.createMessage({
+          const aiMessage = await storage.createMessage(userId, {
             conversationId: validatedData.conversationId,
             role: 'assistant',
             content: aiResult.response
@@ -362,13 +392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Update conversation title if this is the first message
           if (conversationMessages.length === 0) {
-            const conversation = await storage.getConversation(validatedData.conversationId);
+            const conversation = await storage.getConversation(userId, validatedData.conversationId);
             if (conversation && conversation.title === 'New Conversation') {
               // Generate a title from the first message
               const title = validatedData.content.length > 50 
                 ? validatedData.content.substring(0, 50) + '...'
                 : validatedData.content;
-              await storage.updateConversation(validatedData.conversationId, { title });
+              await storage.updateConversation(userId, validatedData.conversationId, { title });
             }
           }
           
@@ -391,9 +421,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tasks routes
-  app.get('/api/tasks', async (req: Request, res: Response) => {
+  app.get('/api/tasks', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const tasks = await storage.getTasks();
+      const userId = req.user.claims.sub;
+      const tasks = await storage.getTasks(userId);
       res.json(tasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -401,15 +432,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks', async (req: Request, res: Response) => {
+  app.post('/api/tasks', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertTaskSchema.parse(req.body);
       // Convert dueDate string to Date object if provided
       const taskData = {
         ...validatedData,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null
       };
-      const task = await storage.createTask(taskData);
+      const task = await storage.createTask(userId, taskData);
       res.json(task);
     } catch (error) {
       console.error('Error creating task:', error);
@@ -421,11 +453,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/tasks/:id', async (req: Request, res: Response) => {
+  app.patch('/api/tasks/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      const task = await storage.updateTask(id, updates);
+      const task = await storage.updateTask(userId, id, updates);
       if (!task) {
         res.status(404).json({ message: 'Task not found' });
       } else {
@@ -437,10 +470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tasks/:id', async (req: Request, res: Response) => {
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteTask(id);
+      const success = await storage.deleteTask(userId, id);
       if (!success) {
         res.status(404).json({ message: 'Task not found' });
       } else {
@@ -453,9 +487,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Calendar Events routes
-  app.get('/api/calendar-events', async (req: Request, res: Response) => {
+  app.get('/api/calendar-events', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const events = await storage.getCalendarEvents();
+      const userId = req.user.claims.sub;
+      const events = await storage.getCalendarEvents(userId);
       res.json(events);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
@@ -463,10 +498,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/calendar-events', async (req: Request, res: Response) => {
+  app.post('/api/calendar-events', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertCalendarEventSchema.parse(req.body);
-      const event = await storage.createCalendarEvent(validatedData);
+      const event = await storage.createCalendarEvent(userId, validatedData);
       res.status(201).json(event);
     } catch (error) {
       console.error('Error creating calendar event:', error);
@@ -478,10 +514,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/calendar-events/:id', async (req: Request, res: Response) => {
+  app.patch('/api/calendar-events/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const event = await storage.updateCalendarEvent(id, req.body);
+      const event = await storage.updateCalendarEvent(userId, id, req.body);
       if (!event) {
         res.status(404).json({ message: 'Calendar event not found' });
       } else {
@@ -493,10 +530,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/calendar-events/:id', async (req: Request, res: Response) => {
+  app.delete('/api/calendar-events/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteCalendarEvent(id);
+      const success = await storage.deleteCalendarEvent(userId, id);
       if (!success) {
         res.status(404).json({ message: 'Calendar event not found' });
       } else {
@@ -509,9 +547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Financial Records routes
-  app.get('/api/financial-records', async (req: Request, res: Response) => {
+  app.get('/api/financial-records', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const records = await storage.getFinancialRecords();
+      const userId = req.user.claims.sub;
+      const records = await storage.getFinancialRecords(userId);
       res.json(records);
     } catch (error) {
       console.error('Error fetching financial records:', error);
@@ -519,10 +558,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/financial-records/:id', async (req: Request, res: Response) => {
+  app.get('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const record = await storage.getFinancialRecord(id);
+      const record = await storage.getFinancialRecord(userId, id);
       if (!record) {
         res.status(404).json({ message: 'Financial record not found' });
       } else {
@@ -534,18 +574,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/financial-records', async (req: Request, res: Response) => {
+  app.post('/api/financial-records', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertFinancialRecordSchema.parse(req.body);
       const recordData = {
         ...validatedData,
         date: new Date(validatedData.date)
       };
-      const record = await storage.createFinancialRecord(recordData);
+      const record = await storage.createFinancialRecord(userId, recordData);
       
       // Trigger immediate AI correlation analysis
       try {
-        await processFinancialCorrelation(record.id);
+        await processFinancialCorrelation(userId, record.id);
         console.log(`✓ Auto-correlation completed for financial record ${record.id}`);
       } catch (correlationError) {
         console.error('Correlation analysis failed but record was saved:', correlationError);
@@ -562,8 +603,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/financial-records/:id', async (req: Request, res: Response) => {
+  app.patch('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
       
@@ -572,13 +614,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.date = new Date(updates.date);
       }
       
-      const record = await storage.updateFinancialRecord(id, updates);
+      const record = await storage.updateFinancialRecord(userId, id, updates);
       if (!record) {
         res.status(404).json({ message: 'Financial record not found' });
       } else {
         // Trigger correlation analysis for updated record
         try {
-          await processFinancialCorrelation(record.id);
+          await processFinancialCorrelation(userId, record.id);
           console.log(`✓ Auto-correlation completed for updated financial record ${record.id}`);
         } catch (correlationError) {
           console.error('Correlation analysis failed but record was updated:', correlationError);
@@ -592,10 +634,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/financial-records/:id', async (req: Request, res: Response) => {
+  app.delete('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteFinancialRecord(id);
+      const success = await storage.deleteFinancialRecord(userId, id);
       if (!success) {
         res.status(404).json({ message: 'Financial record not found' });
       } else {
@@ -608,9 +651,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Financial Analysis endpoint
-  app.get('/api/ai/financial-analysis', async (req: Request, res: Response) => {
+  app.get('/api/ai/financial-analysis', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const records = await storage.getFinancialRecords();
+      const userId = req.user.claims.sub;
+      const records = await storage.getFinancialRecords(userId);
       const analysis = await analyzeFinancialRecords(records);
       res.json(analysis);
     } catch (error) {
@@ -620,8 +664,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Action endpoints for comprehensive data management
-  app.post('/api/ai/update-task-status', async (req: Request, res: Response) => {
+  app.post('/api/ai/update-task-status', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { taskId, status } = req.body;
       
       if (!taskId || !status) {
@@ -633,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid status. Must be: pending, in_progress, or completed' });
       }
       
-      const task = await storage.updateTask(taskId, { status });
+      const task = await storage.updateTask(userId, taskId, { status });
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
       }
@@ -645,10 +690,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-task', async (req: Request, res: Response) => {
+  app.post('/api/ai/create-task', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertTaskSchema.parse(req.body);
-      const task = await storage.createTask(validatedData);
+      const task = await storage.createTask(userId, validatedData);
       res.status(201).json({ message: 'Task created successfully', task });
     } catch (error) {
       console.error('Error creating task:', error);
@@ -660,8 +706,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-goal-progress', async (req: Request, res: Response) => {
+  app.post('/api/ai/update-goal-progress', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { goalId, progress } = req.body;
       
       if (!goalId || progress === undefined) {
@@ -675,7 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Cap progress at 100%
       const cappedProgress = Math.min(progress, 100);
       
-      const goal = await storage.updateGoal(goalId, { progress: cappedProgress });
+      const goal = await storage.updateGoal(userId, goalId, { progress: cappedProgress });
       if (!goal) {
         return res.status(404).json({ message: 'Goal not found' });
       }
@@ -687,10 +734,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-goal', async (req: Request, res: Response) => {
+  app.post('/api/ai/create-goal', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertGoalSchema.parse(req.body);
-      const goal = await storage.createGoal(validatedData);
+      const goal = await storage.createGoal(userId, validatedData);
       res.status(201).json({ message: 'Goal created successfully', goal });
     } catch (error) {
       console.error('Error creating goal:', error);
@@ -702,10 +750,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-calendar-event', async (req: Request, res: Response) => {
+  app.post('/api/ai/create-calendar-event', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertCalendarEventSchema.parse(req.body);
-      const event = await storage.createCalendarEvent(validatedData);
+      const event = await storage.createCalendarEvent(userId, validatedData);
       res.status(201).json({ message: 'Calendar event created successfully', event });
     } catch (error) {
       console.error('Error creating calendar event:', error);
@@ -717,15 +766,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-calendar-event', async (req: Request, res: Response) => {
+  app.post('/api/ai/update-calendar-event', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { eventId, ...updateData } = req.body;
       
       if (!eventId) {
         return res.status(400).json({ message: 'Event ID is required' });
       }
       
-      const event = await storage.updateCalendarEvent(eventId, updateData);
+      const event = await storage.updateCalendarEvent(userId, eventId, updateData);
       if (!event) {
         return res.status(404).json({ message: 'Calendar event not found' });
       }
@@ -737,13 +787,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-financial-record', async (req: Request, res: Response) => {
+  app.post('/api/ai/create-financial-record', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertFinancialRecordSchema.parse(req.body);
-      const record = await storage.createFinancialRecord(validatedData);
+      const record = await storage.createFinancialRecord(userId, validatedData);
       
       // Trigger automatic correlation analysis
-      processFinancialCorrelation(record.id);
+      processFinancialCorrelation(userId, record.id);
       
       res.status(201).json({ message: 'Financial record created successfully', record });
     } catch (error) {
@@ -756,21 +807,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-financial-record', async (req: Request, res: Response) => {
+  app.post('/api/ai/update-financial-record', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { recordId, ...updateData } = req.body;
       
       if (!recordId) {
         return res.status(400).json({ message: 'Record ID is required' });
       }
       
-      const record = await storage.updateFinancialRecord(recordId, updateData);
+      const record = await storage.updateFinancialRecord(userId, recordId, updateData);
       if (!record) {
         return res.status(404).json({ message: 'Financial record not found' });
       }
       
       // Trigger automatic correlation analysis
-      processFinancialCorrelation(record.id);
+      processFinancialCorrelation(userId, record.id);
       
       res.json({ message: 'Financial record updated successfully', record });
     } catch (error) {
@@ -780,9 +832,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Context routes
-  app.get('/api/business-context', async (req: Request, res: Response) => {
+  app.get('/api/business-context', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const contexts = await storage.getBusinessContexts();
+      const userId = req.user.claims.sub;
+      const contexts = await storage.getBusinessContexts(userId);
       res.json(contexts);
     } catch (error) {
       console.error('Error fetching business contexts:', error);
@@ -790,10 +843,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/business-context/:id', async (req: Request, res: Response) => {
+  app.get('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const context = await storage.getBusinessContext(id);
+      const context = await storage.getBusinessContext(userId, id);
       if (!context) {
         res.status(404).json({ message: 'Business context not found' });
       } else {
@@ -805,10 +859,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/business-context/section/:section', async (req: Request, res: Response) => {
+  app.get('/api/business-context/section/:section', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const section = req.params.section;
-      const contexts = await storage.getBusinessContextsBySection(section);
+      const contexts = await storage.getBusinessContextsBySection(userId, section);
       res.json(contexts);
     } catch (error) {
       console.error('Error fetching business contexts by section:', error);
@@ -816,10 +871,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/business-context', async (req: Request, res: Response) => {
+  app.post('/api/business-context', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertBusinessContextSchema.parse(req.body);
-      const context = await storage.createBusinessContext(validatedData);
+      const context = await storage.createBusinessContext(userId, validatedData);
       res.status(201).json(context);
     } catch (error) {
       console.error('Error creating business context:', error);
@@ -831,10 +887,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/business-context/:id', async (req: Request, res: Response) => {
+  app.patch('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const context = await storage.updateBusinessContext(id, req.body);
+      const context = await storage.updateBusinessContext(userId, id, req.body);
       if (!context) {
         res.status(404).json({ message: 'Business context not found' });
       } else {
@@ -846,10 +903,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/business-context/:id', async (req: Request, res: Response) => {
+  app.delete('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const success = await storage.deleteBusinessContext(id);
+      const success = await storage.deleteBusinessContext(userId, id);
       if (!success) {
         res.status(404).json({ message: 'Business context not found' });
       } else {
@@ -862,9 +920,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Correlation endpoints
-  app.get('/api/ai/business-insights', async (req: Request, res: Response) => {
+  app.get('/api/ai/business-insights', isAuthenticated, async (req: any, res: Response) => {
     try {
-      const insights = await generateBusinessInsights();
+      const userId = req.user.claims.sub;
+      const insights = await generateBusinessInsights(userId);
       res.json(insights);
     } catch (error) {
       console.error('Error generating business insights:', error);
@@ -872,19 +931,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/ai/correlations/:financialRecordId', async (req: Request, res: Response) => {
+  app.get('/api/ai/correlations/:financialRecordId', isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const financialRecordId = parseInt(req.params.financialRecordId);
-      const financialRecord = await storage.getFinancialRecord(financialRecordId);
+      const financialRecord = await storage.getFinancialRecord(userId, financialRecordId);
       
       if (!financialRecord) {
         return res.status(404).json({ message: 'Financial record not found' });
       }
 
       const [goals, tasks, allRecords] = await Promise.all([
-        storage.getGoals(),
-        storage.getTasks(),
-        storage.getFinancialRecords()
+        storage.getGoals(userId),
+        storage.getTasks(userId),
+        storage.getFinancialRecords(userId)
       ]);
 
       const analysis = await analyzeDataCorrelations(financialRecord, goals, tasks, allRecords);
@@ -900,18 +960,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 
 // Async function to process financial record correlations
-async function processFinancialCorrelation(financialRecordId: number) {
+async function processFinancialCorrelation(userId: string, financialRecordId: number) {
   try {
-    const financialRecord = await storage.getFinancialRecord(financialRecordId);
+    const financialRecord = await storage.getFinancialRecord(userId, financialRecordId);
     if (!financialRecord) {
       console.error('Financial record not found for correlation:', financialRecordId);
       return;
     }
 
     const [goals, tasks, allRecords] = await Promise.all([
-      storage.getGoals(),
-      storage.getTasks(),
-      storage.getFinancialRecords()
+      storage.getGoals(userId),
+      storage.getTasks(userId),
+      storage.getFinancialRecords(userId)
     ]);
 
     const analysis = await analyzeDataCorrelations(financialRecord, goals, tasks, allRecords);
@@ -920,7 +980,7 @@ async function processFinancialCorrelation(financialRecordId: number) {
     await executeCorrelationActions(analysis);
     
     // Update revenue-based goals with accurate calculations
-    await updateRevenueBasedGoals();
+    await updateRevenueBasedGoals(userId);
     
     console.log(`Processed correlations for financial record ${financialRecordId}:`, {
       correlations: analysis.correlations.length,
@@ -933,11 +993,11 @@ async function processFinancialCorrelation(financialRecordId: number) {
 }
 
 // Function to update revenue-based goals with accurate calculations
-async function updateRevenueBasedGoals() {
+async function updateRevenueBasedGoals(userId: string) {
   try {
     const [goals, financialRecords] = await Promise.all([
-      storage.getGoals(),
-      storage.getFinancialRecords()
+      storage.getGoals(userId),
+      storage.getFinancialRecords(userId)
     ]);
     
     // Calculate current totals
@@ -954,14 +1014,14 @@ async function updateRevenueBasedGoals() {
       if (goal.type === 'revenue' && goal.targetAmount) {
         const newProgress = Math.min(100, Math.floor((totalRevenue / goal.targetAmount) * 100));
         if (newProgress !== goal.progress) {
-          await storage.updateGoal(goal.id, { progress: newProgress });
+          await storage.updateGoal(userId, goal.id, { progress: newProgress });
           console.log(`✓ Updated goal "${goal.title}" progress to ${newProgress}% (${totalRevenue / 100} / ${goal.targetAmount / 100})`);
         }
       } else if (goal.type === 'expense' && goal.targetAmount) {
         // For expense goals, progress = (target - actual) / target * 100 (staying under budget)
         const newProgress = Math.max(0, Math.min(100, Math.floor(((goal.targetAmount - totalExpenses) / goal.targetAmount) * 100)));
         if (newProgress !== goal.progress) {
-          await storage.updateGoal(goal.id, { progress: newProgress });
+          await storage.updateGoal(userId, goal.id, { progress: newProgress });
           console.log(`✓ Updated expense goal "${goal.title}" progress to ${newProgress}%`);
         }
       }
@@ -972,16 +1032,16 @@ async function updateRevenueBasedGoals() {
 }
 
 // Async function to process documents
-async function processDocumentAsync(documentId: number, filePath: string, mimeType: string) {
+async function processDocumentAsync(userId: string, documentId: number, filePath: string, mimeType: string) {
   try {
     // Update status to processing
-    await storage.updateDocument(documentId, { status: 'processing' });
+    await storage.updateDocument(userId, documentId, { status: 'processing' });
 
     // Extract text from file
     const content = await extractTextFromFile(filePath, mimeType);
     
     // Get document info for filename
-    const document = await storage.getDocument(documentId);
+    const document = await storage.getDocument(userId, documentId);
     if (!document) {
       throw new Error('Document not found');
     }
@@ -990,7 +1050,7 @@ async function processDocumentAsync(documentId: number, filePath: string, mimeTy
     const analysis = await summarizeDocument(content, document.originalName);
 
     // Update document with content and summary
-    await storage.updateDocument(documentId, {
+    await storage.updateDocument(userId, documentId, {
       content,
       summary: analysis.summary,
       insights: analysis.keyPoints,
@@ -1000,7 +1060,7 @@ async function processDocumentAsync(documentId: number, filePath: string, mimeTy
 
     // Create AI insights
     for (const insight of analysis.insights) {
-      await storage.createAiInsight({
+      await storage.createAiInsight(userId, {
         documentId,
         type: insight.type,
         title: insight.title,
@@ -1013,7 +1073,7 @@ async function processDocumentAsync(documentId: number, filePath: string, mimeTy
     await cleanupFile(filePath);
   } catch (error) {
     console.error('Error processing document:', error);
-    await storage.updateDocument(documentId, { status: 'error' });
+    await storage.updateDocument(userId, documentId, { status: 'error' });
     await cleanupFile(filePath);
   }
 }
