@@ -3,12 +3,13 @@ import Navigation from "@/components/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CheckCircle, Clock, AlertCircle, Calendar, Trash2 } from "lucide-react";
+import { Plus, CheckCircle, Clock, AlertCircle, Calendar, Trash2, Edit, Play, Square, RotateCcw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import NewTaskModal from "@/components/modals/new-task-modal";
+import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -22,11 +23,13 @@ export default function Tasks() {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<Task> }) => {
-      const response = await apiRequest('PATCH', `/api/tasks/${id}`, updates);
-      return response.json();
+      return apiRequest('PATCH', `/api/tasks/${id}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({
+        title: "Task updated successfully",
+      });
     },
     onError: (error) => {
       toast({
@@ -73,10 +76,21 @@ export default function Tasks() {
     }
   };
 
-  const toggleTaskStatus = (task: Task) => {
-    const newStatus = task.status === 'completed' ? 'pending' : 
-                     task.status === 'pending' ? 'in_progress' : 'completed';
+  const updateTaskStatus = (task: Task, newStatus: string) => {
+    if (task.status === newStatus) return; // Prevent unnecessary updates
     updateTaskMutation.mutate({ id: task.id, updates: { status: newStatus } });
+  };
+
+  const markAsCompleted = (task: Task) => {
+    updateTaskStatus(task, 'completed');
+  };
+
+  const markAsInProgress = (task: Task) => {
+    updateTaskStatus(task, 'in_progress');
+  };
+
+  const markAsPending = (task: Task) => {
+    updateTaskStatus(task, 'pending');
   };
 
   const pendingTasks = tasks?.filter(task => task.status === 'pending') || [];
@@ -135,10 +149,12 @@ export default function Tasks() {
                     <TaskCard
                       key={task.id}
                       task={task}
-                      onStatusChange={toggleTaskStatus}
+                      onMarkCompleted={markAsCompleted}
+                      onMarkInProgress={markAsInProgress}
+                      onMarkPending={markAsPending}
                       onDelete={(id) => deleteTaskMutation.mutate(id)}
                       getPriorityColor={getPriorityColor}
-                      getStatusIcon={getStatusIcon}
+                      isUpdating={updateTaskMutation.isPending}
                     />
                   ))
                 )}
@@ -167,10 +183,12 @@ export default function Tasks() {
                     <TaskCard
                       key={task.id}
                       task={task}
-                      onStatusChange={toggleTaskStatus}
+                      onMarkCompleted={markAsCompleted}
+                      onMarkInProgress={markAsInProgress}
+                      onMarkPending={markAsPending}
                       onDelete={(id) => deleteTaskMutation.mutate(id)}
                       getPriorityColor={getPriorityColor}
-                      getStatusIcon={getStatusIcon}
+                      isUpdating={updateTaskMutation.isPending}
                     />
                   ))
                 )}
@@ -199,10 +217,12 @@ export default function Tasks() {
                     <TaskCard
                       key={task.id}
                       task={task}
-                      onStatusChange={toggleTaskStatus}
+                      onMarkCompleted={markAsCompleted}
+                      onMarkInProgress={markAsInProgress}
+                      onMarkPending={markAsPending}
                       onDelete={(id) => deleteTaskMutation.mutate(id)}
                       getPriorityColor={getPriorityColor}
-                      getStatusIcon={getStatusIcon}
+                      isUpdating={updateTaskMutation.isPending}
                     />
                   ))
                 )}
@@ -219,31 +239,93 @@ export default function Tasks() {
 
 interface TaskCardProps {
   task: Task;
-  onStatusChange: (task: Task) => void;
+  onMarkCompleted: (task: Task) => void;
+  onMarkInProgress: (task: Task) => void;
+  onMarkPending: (task: Task) => void;
   onDelete: (id: number) => void;
   getPriorityColor: (priority: string) => string;
-  getStatusIcon: (status: string) => React.ReactNode;
+  isUpdating: boolean;
 }
 
-function TaskCard({ task, onStatusChange, onDelete, getPriorityColor, getStatusIcon }: TaskCardProps) {
+function TaskCard({ task, onMarkCompleted, onMarkInProgress, onMarkPending, onDelete, getPriorityColor, isUpdating }: TaskCardProps) {
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const getStatusButtons = () => {
+    const buttons = [];
+    
+    // Show relevant action buttons based on current status
+    if (task.status !== 'completed') {
+      buttons.push(
+        <Button
+          key="complete"
+          variant="ghost"
+          size="sm"
+          onClick={() => onMarkCompleted(task)}
+          disabled={isUpdating}
+          className="p-1 h-8 w-8 text-green-600 hover:text-green-700"
+          title="Mark as completed"
+        >
+          <CheckCircle className="h-4 w-4" />
+        </Button>
+      );
+    }
+    
+    if (task.status !== 'in_progress') {
+      buttons.push(
+        <Button
+          key="progress"
+          variant="ghost"
+          size="sm"
+          onClick={() => onMarkInProgress(task)}
+          disabled={isUpdating}
+          className="p-1 h-8 w-8 text-yellow-600 hover:text-yellow-700"
+          title="Mark as in progress"
+        >
+          <Play className="h-4 w-4" />
+        </Button>
+      );
+    }
+    
+    if (task.status !== 'pending') {
+      buttons.push(
+        <Button
+          key="pending"
+          variant="ghost"
+          size="sm"
+          onClick={() => onMarkPending(task)}
+          disabled={isUpdating}
+          className="p-1 h-8 w-8 text-gray-600 hover:text-gray-700"
+          title="Mark as pending"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+      );
+    }
+    
+    return buttons;
+  };
+
   return (
-    <div className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow group">
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-medium text-gray-900 flex-1">{task.title}</h3>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onStatusChange(task)}
-            className="p-1 h-8 w-8"
+            onClick={() => setEditModalOpen(true)}
+            className="p-1 h-8 w-8 text-blue-600 hover:text-blue-700"
+            title="Edit task"
           >
-            {getStatusIcon(task.status)}
+            <Edit className="h-4 w-4" />
           </Button>
+          {getStatusButtons()}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onDelete(task.id)}
             className="p-1 h-8 w-8 text-red-500 hover:text-red-700"
+            title="Delete task"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -255,9 +337,14 @@ function TaskCard({ task, onStatusChange, onDelete, getPriorityColor, getStatusI
       )}
       
       <div className="flex items-center justify-between">
-        <Badge className={getPriorityColor(task.priority)}>
-          {task.priority}
-        </Badge>
+        <div className="flex items-center space-x-2">
+          <Badge className={getPriorityColor(task.priority)}>
+            {task.priority}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {task.status.replace('_', ' ')}
+          </Badge>
+        </div>
         
         {task.dueDate && (
           <div className="flex items-center text-xs text-gray-500">
@@ -266,6 +353,12 @@ function TaskCard({ task, onStatusChange, onDelete, getPriorityColor, getStatusI
           </div>
         )}
       </div>
+
+      <EditTaskModal 
+        task={task}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
     </div>
   );
 }
