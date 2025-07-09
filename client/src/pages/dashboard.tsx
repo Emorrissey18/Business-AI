@@ -202,7 +202,7 @@ export default function Dashboard() {
                     <div
                       key={conversation.id}
                       className={cn(
-                        "w-full p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer",
+                        "w-full p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer relative",
                         selectedConversation === conversation.id ? "bg-blue-50 border border-blue-200" : "border border-transparent"
                       )}
                       onClick={() => editingConversation?.id !== conversation.id && setSelectedConversation(conversation.id)}
@@ -260,9 +260,9 @@ export default function Dashboard() {
                           )}
                         </div>
                         {editingConversation?.id !== conversation.id && (
-                          <div className="flex items-center space-x-1 ml-2">
+                          <div className="flex items-center space-x-1 ml-2 opacity-100 bg-white rounded-md p-1">
                             <button 
-                              className="h-6 w-6 p-0 opacity-60 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-blue-100 hover:text-blue-600"
+                              className="h-6 w-6 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-blue-100 hover:text-blue-600 text-gray-600"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditConversation(conversation);
@@ -272,7 +272,7 @@ export default function Dashboard() {
                               <Edit className="h-3 w-3" />
                             </button>
                             <button 
-                              className="h-6 w-6 p-0 opacity-60 group-hover:opacity-100 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-red-100 hover:text-red-600"
+                              className="h-6 w-6 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-red-100 hover:text-red-600 text-gray-600"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteConversation(conversation.id);
