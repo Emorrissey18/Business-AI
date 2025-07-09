@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { devAuthMiddleware, isAuthenticatedDev } from "./devAuth";
 import { insertDocumentSchema, insertGoalSchema, insertAiInsightSchema, insertConversationSchema, insertMessageSchema, insertTaskSchema, insertCalendarEventSchema, insertFinancialRecordSchema, insertBusinessContextSchema } from "@shared/schema";
 import { upload, extractTextFromFile, cleanupFile } from "./services/fileProcessor";
 import { summarizeDocument, generateChatResponse } from "./services/openai";
@@ -20,11 +21,18 @@ const updateGoalSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth
-  await setupAuth(app);
+  // Setup authentication - use dev middleware in development
+  if (process.env.NODE_ENV === 'development') {
+    app.use(devAuthMiddleware);
+  } else {
+    await setupAuth(app);
+  }
+
+  // Determine which auth middleware to use
+  const authMiddleware = process.env.NODE_ENV === 'development' ? isAuthenticatedDev : isAuthenticated;
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/auth/user', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -36,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Documents routes
-  app.get('/api/documents', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/documents', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const documents = await storage.getDocuments(userId);
@@ -47,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/documents/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/documents/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -62,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/documents/upload', isAuthenticated, upload.single('file'), async (req: any, res: Response) => {
+  app.post('/api/documents/upload', authMiddleware, upload.single('file'), async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       if (!req.file) {
@@ -89,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/documents/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -105,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Goals routes
-  app.get('/api/goals', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/goals', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const goals = await storage.getGoals(userId);
@@ -116,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/goals', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/goals', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertGoalSchema.parse(req.body);
@@ -137,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/goals/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.patch('/api/goals/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -165,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/goals/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/goals/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -181,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Insights routes
-  app.get('/api/insights', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/insights', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const insights = await storage.getAiInsights(userId);
@@ -192,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/insights/document/:documentId', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/insights/document/:documentId', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const documentId = parseInt(req.params.documentId);
@@ -205,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stats route
-  app.get('/api/stats', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/stats', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const documents = await storage.getDocuments(userId);
@@ -228,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations routes
-  app.get('/api/conversations', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/conversations', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversations(userId);
@@ -239,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/conversations', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/conversations', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertConversationSchema.parse(req.body);
@@ -256,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages routes
-  app.get('/api/messages/:conversationId', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/messages/:conversationId', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const conversationId = parseInt(req.params.conversationId);
@@ -268,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/messages', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/messages', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertMessageSchema.parse(req.body);
@@ -421,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tasks routes
-  app.get('/api/tasks', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/tasks', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const tasks = await storage.getTasks(userId);
@@ -432,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/tasks', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertTaskSchema.parse(req.body);
@@ -453,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/tasks/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.patch('/api/tasks/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -470,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/tasks/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -487,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Calendar Events routes
-  app.get('/api/calendar-events', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/calendar-events', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const events = await storage.getCalendarEvents(userId);
@@ -498,7 +506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/calendar-events', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/calendar-events', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertCalendarEventSchema.parse(req.body);
@@ -514,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/calendar-events/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.patch('/api/calendar-events/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -530,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/calendar-events/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/calendar-events/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -547,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Financial Records routes
-  app.get('/api/financial-records', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/financial-records', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const records = await storage.getFinancialRecords(userId);
@@ -558,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/financial-records/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -574,7 +582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/financial-records', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/financial-records', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertFinancialRecordSchema.parse(req.body);
@@ -603,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.patch('/api/financial-records/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -634,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/financial-records/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/financial-records/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -651,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Financial Analysis endpoint
-  app.get('/api/ai/financial-analysis', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/ai/financial-analysis', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const records = await storage.getFinancialRecords(userId);
@@ -664,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Action endpoints for comprehensive data management
-  app.post('/api/ai/update-task-status', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/update-task-status', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { taskId, status } = req.body;
@@ -690,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-task', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/create-task', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertTaskSchema.parse(req.body);
@@ -706,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-goal-progress', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/update-goal-progress', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { goalId, progress } = req.body;
@@ -734,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-goal', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/create-goal', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertGoalSchema.parse(req.body);
@@ -750,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-calendar-event', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/create-calendar-event', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertCalendarEventSchema.parse(req.body);
@@ -766,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-calendar-event', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/update-calendar-event', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { eventId, ...updateData } = req.body;
@@ -787,7 +795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/create-financial-record', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/create-financial-record', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertFinancialRecordSchema.parse(req.body);
@@ -807,7 +815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/ai/update-financial-record', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/ai/update-financial-record', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { recordId, ...updateData } = req.body;
@@ -832,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Context routes
-  app.get('/api/business-context', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/business-context', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const contexts = await storage.getBusinessContexts(userId);
@@ -843,7 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/business-context/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -859,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/business-context/section/:section', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/business-context/section/:section', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const section = req.params.section;
@@ -871,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/business-context', isAuthenticated, async (req: any, res: Response) => {
+  app.post('/api/business-context', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertBusinessContextSchema.parse(req.body);
@@ -887,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.patch('/api/business-context/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -903,7 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/business-context/:id', isAuthenticated, async (req: any, res: Response) => {
+  app.delete('/api/business-context/:id', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -920,7 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Correlation endpoints
-  app.get('/api/ai/business-insights', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/ai/business-insights', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const insights = await generateBusinessInsights(userId);
@@ -931,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/ai/correlations/:financialRecordId', isAuthenticated, async (req: any, res: Response) => {
+  app.get('/api/ai/correlations/:financialRecordId', authMiddleware, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const financialRecordId = parseInt(req.params.financialRecordId);
