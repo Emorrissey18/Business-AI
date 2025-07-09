@@ -31,9 +31,7 @@ export default function Dashboard() {
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: number) => {
-      await apiRequest(`/api/conversations/${conversationId}`, {
-        method: 'DELETE',
-      });
+      await apiRequest('DELETE', `/api/conversations/${conversationId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
@@ -43,21 +41,23 @@ export default function Dashboard() {
         description: "Conversation deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error.message?.includes('404') 
+        ? "Conversation not found or you don't have permission to delete it"
+        : "Failed to delete conversation";
+      
       toast({
         title: "Error",
-        description: "Failed to delete conversation",
+        description: errorMessage,
         variant: "destructive",
       });
+      console.error("Delete conversation error:", error);
     },
   });
 
   const updateConversationMutation = useMutation({
     mutationFn: async ({ id, title }: { id: number; title: string }) => {
-      return await apiRequest(`/api/conversations/${id}`, {
-        method: 'PATCH',
-        body: { title },
-      });
+      return await apiRequest('PATCH', `/api/conversations/${id}`, { title });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
@@ -68,12 +68,17 @@ export default function Dashboard() {
         description: "Conversation updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error.message?.includes('404') 
+        ? "Conversation not found or you don't have permission to edit it"
+        : "Failed to update conversation";
+        
       toast({
-        title: "Error",
-        description: "Failed to update conversation",
+        title: "Error", 
+        description: errorMessage,
         variant: "destructive",
       });
+      console.error("Update conversation error:", error);
     },
   });
 
