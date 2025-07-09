@@ -39,6 +39,7 @@ export default function NewEventModal({ trigger }: NewEventModalProps) {
       startDate: "",
       endDate: "",
       allDay: false,
+      completed: false,
     },
   });
 

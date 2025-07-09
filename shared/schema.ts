@@ -80,6 +80,7 @@ export const calendarEvents = pgTable("calendar_events", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   allDay: boolean("all_day").notNull().default(false),
+  completed: boolean("completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -159,6 +160,7 @@ export const insertCalendarEventSchema = z.object({
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
   allDay: z.boolean().default(false),
+  completed: z.boolean().default(false),
 });
 
 export const insertFinancialRecordSchema = z.object({
